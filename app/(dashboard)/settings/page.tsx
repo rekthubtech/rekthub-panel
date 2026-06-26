@@ -2,209 +2,107 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 
-interface Model { id: number; name: string; provider: string; input_price_per_m: number; output_price_per_m: number; is_enabled: boolean; capabilities: string[] }
-interface TelegramSettings { enabled: boolean; chat_id: string; notify_on_publish: boolean; notify_on_error: boolean; notify_on_daily_summary: boolean }
-interface TrendSettings { enabled: boolean; languages: string[]; niches: string[]; daily_limit: number; model_id: number; prompt_template: string }
-interface User { id: number; email: string; role: string; created_at: string }
-interface AuditLog { id: number; user_email: string; action: string; details: string; ip: string; created_at: string }
-
-function ModelsTab() {
-  const [models, setModels] = useState<Model[]>([])
-  const [loading, setLoading] = useState(true)
-  useEffect(() => {
-    api.get<Model[]>('/models').then(d => { setModels(d); setLoading(false) })
-  }, [])
-  async function toggle(id: number, enabled: boolean) {
-    await api.patch(`/models/${id}`, { is_enabled: enabled })
-    setModels(prev => prev.map(m => m.id === id ? { ...m, is_enabled: enabled } : m))
-  }
-  if (loading) return <div className="p-4">YÃ¼kleniyor...</div>
-  return (
-    <div className="space-y-3">
-      {models.map(m => (
-        <div key={m.id} className="flex justify-between items-center p-4 border rounded-xl">
-          <div>
-            <p className="font-medium">{m.name}</p>
-            <p className="text-xs text-gray-500">{m.provider} - in: ${m.input_price_per_m}/M | out: ${m.output_price_per_m}/M</p>
-          </div>
-          <button onClick={() => toggle(m.id, !m.is_enabled)} className={`px-3 py-1 rounded-full text-sm ${m.is_enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-            {m.is_enabled ? 'Aktif' : 'Pasif'}
-          </button>
-        </div>
-      ))}
-    </div>
-  )
+interface Settings {
+  default_model: string; auto_publish: boolean; daily_limit: number;
+  notification_email: string; timezone: string;
 }
 
-function TelegramTab() {
-  const [settings, setSettings] = useState<TelegramSettings | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  useEffect(() => {
-    api.get<TelegramSettings>('/settings/telegram').then(setSettings)
-  }, [])
-  async function save() {
-    setSaving(true)
-    await api.patch('/settings/telegram', settings)
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
-  }
-  if (!settings) return <div className="p-4">YÃ¼kleniyor...</div>
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <input type="checkbox" id="tg-enabled" checked={settings.enabled} onChange={e => setSettings(p => ({...p!, enabled: e.target.checked}))} className="w-4 h-4" />
-        <label htmlFor="tg-enabled" className="font-medium">Bildirimleri Aktif Et</label>
-      </div>
-      <div>
-        <label className="text-sm font-medium mb-1 block">Chat ID</label>
-        <input type="text" value={settings.chat_id} onChange={e => setSettings(p => ({...p!, chat_id: e.target.value}))} className="w-full border rounded-lg p-2" />
-      </div>
-      {[
-        { key: 'notify_on_publish' as keyof TelegramSettings, label: 'YayÄ±n Bildirimleri' },
-        { key: 'notify_on_error' as keyof TelegramSettings, label: 'Hata Bildirimleri' },
-        { key: 'notify_on_daily_summary' as keyof TelegramSettings, label: 'GÃ¼nlÃ¼k Ãzet Bildirimleri' },
-      ].map(opt => (
-        <div key={opt.key} className="flex items-center gap-3">
-          <input type="checkbox" id={opt.key} checked={!!(settings[opt.key] as boolean)} onChange={e => setSettings(p => ({...p!, [opt.key]: e.target.checked}))} className="w-4 h-4" />
-          <label htmlFor={opt.key}>{opt.label}</label>
-        </div>
-      ))}
-      <button onClick={save} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
-        {saving ? 'Kaydediliyor...' : saved ? 'Kaydedildi!' : 'Kaydet'}
-      </button>
-    </div>
-  )
-}
-
-function TrendTab() {
-  const [settings, setSettings] = useState<TrendSettings | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  useEffect(() => {
-    api.get<TrendSettings>('/settings/trend-ideas').then(setSettings)
-  }, [])
-  async function save() {
-    setSaving(true)
-    await api.patch('/settings/trend-ideas', settings)
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
-  }
-  if (!settings) return <div className="p-4">YÃ¼kleniyor...</div>
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <input type="checkbox" id="trend-enabled" checked={settings.enabled} onChange={e => setSettings(p => ({...p!, enabled: e.target.checked}))} className="w-4 h-4" />
-        <label htmlFor="trend-enabled" className="font-medium">Fikir Ãreticisini Aktif Et</label>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium mb-1 block">Diller (virgÃ¼l ayrÄ±lÄ±)</label>
-          <input type="text" value={settings.languages.join(',')} onChange={e => setSettings(p => ({...p!, languages: e.target.value.split(',').map(s => s.trim())}))} className="w-full border rounded-lg p-2" />
-        </div>
-        <div>
-          <label className="text-sm font-medium mb-1 block">NiÅler (virgÃ¼l ayrÄ±lÄ±)</label>
-          <input type="text" value={settings.niches.join(',')} onChange={e => setSettings(p => ({...p!, niches: e.target.value.split(',').map(s => s.trim())}))} className="w-full border rounded-lg p-2" />
-        </div>
-      </div>
-      <div>
-        <label className="text-sm font-medium mb-1 block">GÃ¼nlÃ¼k Limit</label>
-        <input type="number" value={settings.daily_limit} onChange={e => setSettings(p => ({...p!, daily_limit: parseInt(e.target.value)}))} className="w-full border rounded-lg p-2" />
-      </div>
-      <div>
-        <label className="text-sm font-medium mb-1 block">Prompt Åablonu</label>
-        <textarea value={settings.prompt_template} onChange={e => setSettings(p => ({...p!, prompt_template: e.target.value}))} className="w-full border rounded-lg p-2" rows={6} />
-      </div>
-      <button onClick={save} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
-        {saving ? 'Kaydediliyor...' : saved ? 'Kaydedildi!' : 'Kaydet'}
-      </button>
-    </div>
-  )
-}
-
-function UsersTab() {
-  const [users, setUsers] = useState<User[]>([])
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviting, setInviting] = useState(false)
-  const [invited, setInvited] = useState(false)
-  useEffect(() => {
-    api.get<User[]>('/users').then(setUsers)
-  }, [])
-  async function invite() {
-    setInviting(true)
-    await api.post('/auth/invite', { email: inviteEmail })
-    setInviting(false); setInvited(true); setInviteEmail('')
-    setTimeout(() => setInvited(false), 3000)
-  }
-  return (
-    <div className="space-y-6">
-      <div className="flex gap-2">
-        <input type="email" placeholder="Davet edilecek e-posta" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="flex-1 border rounded-lg p-2" />
-        <button onClick={invite} disabled={inviting || !inviteEmail} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
-          {inviting ? 'GÃ¶nderiliyor...' : invited ? 'GÃ¶nderildi!' : 'Davet GÃ¶nder'}
-        </button>
-      </div>
-      <div className="space-y-2">
-        {users.map(u => (
-          <div key={u.id} className="flex justify-between items-center p-3 border rounded-xl">
-            <div>
-              <p className="font-medium">{u.email}</p>
-              <p className="text-xs text-gray-500">{u.role} Â· {new Date(u.created_at).toLocaleDateString('tr-TR')}</p>
-            </div>
-            <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">{u.role}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function AuditTab() {
-  const [logs, setLogs] = useState<AuditLog[]>([])
-  const [loading, setLoading] = useState(true)
-  useEffect(() => {
-    api.get<AuditLog[]>('/audit-logs').then(d => { setLogs(d); setLoading(false) })
-  }, [])
-  if (loading) return <div className="p-4">YÃ¼kleniyor...</div>
-  return (
-    <div className="space-y-2">
-      {logs.map(l => (
-        <div key={l.id} className="p-3 border rounded-xl">
-          <div className="flex justify-between items-start">
-            <span className="font-medium text-sm">{l.action}</span>
-            <span className="text-xs text-gray-400">{new Date(l.created_at).toLocaleString('tr-TR')}</span>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">{l.user_email} Â· {l.details}</p>
-        </div>
-      ))}
-    </div>
-  )
-}
+const MODELS = [
+  'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro',
+  'gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1',
+  'claude-3-5-haiku-20241022', 'claude-3-7-sonnet-20250219',
+]
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('models')
-  const tabs = [
-    { id: 'models', label: 'Modeller' },
-    { id: 'telegram', label: 'Telegram' },
-    { id: 'trend', label: 'Trend Fikret' },
-    { id: 'users', label: 'KullanÄ±cÄ±lar' },
-    { id: 'audit', label: 'Denetim GÃ¼nlÃ¼ÄÃ¼' },
-  ]
+  const [settings, setSettings] = useState<Settings>({
+    default_model: 'gemini-2.0-flash',
+    auto_publish: false,
+    daily_limit: 5,
+    notification_email: '',
+    timezone: 'Europe/Istanbul',
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => { fetchSettings() }, [])
+
+  async function fetchSettings() {
+    setLoading(true)
+    try { setSettings(await api.get<Settings>('/settings')) }
+    catch { /* keep defaults */ }
+    finally { setLoading(false) }
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.put('/settings', settings)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } finally { setSaving(false) }
+  }
+
+  if (loading) return <div className="p-8 text-center">Yükleniyor…</div>
+
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-2xl">
       <h2 className="text-2xl font-bold mb-6">Ayarlar</h2>
-      <div className="flex gap-1 mb-6 border-b">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === t.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600'}`}>
-            {t.label}
+      <form onSubmit={handleSave} className="space-y-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <h3 className="font-semibold text-gray-800">Genel</h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Varsayılan Model</label>
+            <select value={settings.default_model}
+              onChange={e => setSettings(s => ({ ...s, default_model: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {MODELS.map(m => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Günlük Video Limiti</label>
+            <input type="number" min={1} max={50} value={settings.daily_limit}
+              onChange={e => setSettings(s => ({ ...s, daily_limit: +e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Otomatik Yayın</p>
+              <p className="text-xs text-gray-400">Onaylanan konseptleri otomatik yayınla</p>
+            </div>
+            <button type="button" onClick={() => setSettings(s => ({ ...s, auto_publish: !s.auto_publish }))}
+              className={`w-10 h-6 rounded-full transition-colors ${settings.auto_publish ? 'bg-blue-600' : 'bg-gray-200'}`}>
+              <span className={`block w-4 h-4 bg-white rounded-full mx-auto transition-transform ${settings.auto_publish ? 'translate-x-2' : '-translate-x-2'}`} />
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <h3 className="font-semibold text-gray-800">Bildirimler</h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Bildirim E-postası</label>
+            <input type="email" value={settings.notification_email}
+              onChange={e => setSettings(s => ({ ...s, notification_email: e.target.value }))}
+              placeholder="ornek@email.com"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Zaman Dilimi</label>
+            <input type="text" value={settings.timezone}
+              onChange={e => setSettings(s => ({ ...s, timezone: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={saving}
+            className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            {saving ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
-        ))}
-      </div>
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        {activeTab === 'models' && <ModelsTab />}
-        {activeTab === 'telegram' && <TelegramTab />}
-        {activeTab === 'trend' && <TrendTab />}
-        {activeTab === 'users' && <UsersTab />}
-        {activeTab === 'audit' && <AuditTab />}
-      </div>
+          {saved && <span className="text-sm text-green-600">Kaydedildi ✓</span>}
+        </div>
+      </form>
     </div>
   )
 }
