@@ -2,207 +2,161 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 
+const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || ''
+
 const MODELS = [
-  'Otomatik seÃ§', 'kling-3.0', 'veo-3.1', 'seedance-2.0-fast',
-  'wan-2.6', 'hailuo-2.3', 'vidu-q3', 'sora-2-pro', 'runway-gen-4.5',
+  'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro',
+  'gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1',
+  'claude-3-5-haiku-20241022', 'claude-3-7-sonnet-20250219',
 ]
 
 interface Channel {
-  id: string; name: string; category: string; status: string
-  default_model: string | null; subscriber_count: number
+  id: number; name: string; youtube_channel_id: string;
+  status: string; default_model: string; schedule_slots: string[];
 }
-interface ScheduleSlot { id: string; format: string; publish_time: string; is_active: boolean }
 
 export default function ChannelsPage() {
   const [channels, setChannels] = useState<Channel[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState('')
-  const [settingsCh, setSettingsCh] = useState<Channel | null>(null)
-  const [slots, setSlots]           = useState<ScheduleSlot[]>([])
-  const [newSlot, setNewSlot]       = useState({ format: 'shorts', publish_time: '09:00' })
-  const [slotsLoading, setSlotsLoading] = useState(false)
-  const [deleteId, setDeleteId]     = useState<string | null>(null)
-  const [saving, setSaving]         = useState<string | null>(null)
+  const [editingModel, setEditingModel] = useState<number | null>(null)
+  const [showSlots, setShowSlots] = useState<number | null>(null)
+  const [newSlot, setNewSlot] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { fetchChannels() }, [])
 
-  async function load() {
-    try {
-      const data = await api.get<Channel[]>('/channels')
-      setChannels(Array.isArray(data) ? data : [])
-    } catch (e: unknown) { setError((e as Error).message) }
+  async function fetchChannels() {
+    setLoading(true)
+    try { setChannels(await api.get<Channel[]>('/channels')) }
     finally { setLoading(false) }
   }
 
   async function toggleStatus(ch: Channel) {
-    const next = ch.status === 'active' ? 'inactive' : 'active'
-    setSaving(ch.id)
-    try {
-      await api.patch(`/channels/${ch.id}`, { status: next })
-      setChannels(cs => cs.map(c => c.id === ch.id ? { ...c, status: next } : c))
-    } finally { setSaving(null) }
+    const next = ch.status === 'active' ? 'paused' : 'active'
+    await api.patch(`/channels/${ch.id}`, { status: next })
+    setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, status: next } : c))
   }
 
-  async function updateModel(ch: Channel, model: string) {
-    const m = model === 'Otomatik seÃ§' ? null : model
-    setSaving(ch.id + '-model')
-    try {
-      await api.patch(`/channels/${ch.id}`, { default_model: m })
-      setChannels(cs => cs.map(c => c.id === ch.id ? { ...c, default_model: m } : c))
-    } finally { setSaving(null) }
+  async function updateModel(id: number, model: string) {
+    await api.patch(`/channels/${id}`, { default_model: model })
+    setChannels(prev => prev.map(c => c.id === id ? { ...c, default_model: model } : c))
+    setEditingModel(null)
   }
 
-  async function openSettings(ch: Channel) {
-    setSettingsCh(ch); setSlotsLoading(true)
-    try {
-      const data = await api.get<ScheduleSlot[]>(`/channels/${ch.id}/schedule-slots`)
-      setSlots(Array.isArray(data) ? data : [])
-    } finally { setSlotsLoading(false) }
+  async function addSlot(ch: Channel) {
+    if (!newSlot.match(/^\d{2}:\d{2}$/)) return
+    const slots = [...(ch.schedule_slots || []), newSlot]
+    await api.patch(`/channels/${ch.id}`, { schedule_slots: slots })
+    setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, schedule_slots: slots } : c))
+    setNewSlot('')
   }
 
-  async function addSlot() {
-    if (!settingsCh) return
-    const slot = await api.post<ScheduleSlot>(`/channels/${settingsCh.id}/schedule-slots`, newSlot)
-    setSlots(s => [...s, slot])
+  async function removeSlot(ch: Channel, slot: string) {
+    const slots = ch.schedule_slots.filter(s => s !== slot)
+    await api.patch(`/channels/${ch.id}`, { schedule_slots: slots })
+    setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, schedule_slots: slots } : c))
   }
 
-  async function removeSlot(slotId: string) {
-    if (!settingsCh) return
-    await api.delete(`/channels/${settingsCh.id}/schedule-slots/${slotId}`)
-    setSlots(s => s.filter(sl => sl.id !== slotId))
-  }
-
-  async function deleteChannel(id: string) {
+  async function deleteChannel(id: number) {
     await api.delete(`/channels/${id}`)
-    setChannels(cs => cs.filter(c => c.id !== id))
-    setDeleteId(null)
+    setChannels(prev => prev.filter(c => c.id !== id))
+    setDeleteConfirm(null)
   }
 
-  const startOAuth = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google/start`
+  function startOAuth() {
+    window.location.href = `${NEXT_PUBLIC_API_URL}/auth/google/start`
   }
 
-  if (loading) return <div className="p-8 text-gray-400">YÃ¼kleniyor...</div>
+  if (loading) return <div className="p-8 text-center">Yükleniyor…</div>
 
   return (
-    <div className="p-8 max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Kanallar</h1>
-        <button onClick={startOAuth}
-          className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-sm font-medium transition">
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Kanallar</h2>
+        <button onClick={startOAuth} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
           + Yeni Kanal Ekle
         </button>
       </div>
 
-      {error && <div className="bg-red-900/30 border border-red-800 text-red-400 p-4 rounded-lg mb-4 text-sm">{error}</div>}
-
-      {channels.length === 0 && !error && (
-        <div className="text-center py-20 text-gray-500">
-          <p className="mb-4 text-lg">HenÃ¼z kanal baÄlanmamÄ±Å.</p>
-          <button onClick={startOAuth} className="text-green-400 hover:underline text-sm">
-            Google hesabÄ± baÄlayarak kanal ekle â
+      {channels.length === 0 ? (
+        <div className="bg-white rounded-xl p-12 text-center border border-gray-100">
+          <p className="text-gray-500 mb-3">Henüz kanal bağlanmamış.</p>
+          <button onClick={startOAuth} className="text-blue-600 text-sm font-medium">
+            Google hesabı bağlayarak kanal ekle →
           </button>
         </div>
-      )}
-
-      <div className="space-y-3">
-        {channels.map(ch => (
-          <div key={ch.id} className="bg-gray-900 rounded-xl p-5 flex flex-wrap items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="font-medium truncate">{ch.name}</div>
-              <div className="text-sm text-gray-400 mt-0.5">
-                {ch.category} Â· {ch.subscriber_count?.toLocaleString('tr-TR') ?? 'â'} abone
+      ) : (
+        <div className="space-y-3">
+          {channels.map(ch => (
+            <div key={ch.id} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="font-semibold">{ch.name}</h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${ch.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {ch.status === 'active' ? 'Aktif' : 'Durduruldu'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400">{ch.youtube_channel_id}</p>
+                  <div className="mt-3 flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Model:</span>
+                      {editingModel === ch.id ? (
+                        <select autoFocus defaultValue={ch.default_model}
+                          onChange={e => updateModel(ch.id, e.target.value)}
+                          onBlur={() => setEditingModel(null)}
+                          className="text-xs border rounded px-2 py-1">
+                          {MODELS.map(m => <option key={m}>{m}</option>)}
+                        </select>
+                      ) : (
+                        <button onClick={() => setEditingModel(ch.id)} className="text-xs text-blue-600 hover:underline">
+                          {ch.default_model || 'Seç'}
+                        </button>
+                      )}
+                    </div>
+                    <button onClick={() => setShowSlots(showSlots === ch.id ? null : ch.id)} className="text-xs text-gray-500 hover:text-gray-700">
+                      Zamanlama ({ch.schedule_slots?.length || 0} slot)
+                    </button>
+                  </div>
+                  {showSlots === ch.id && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {(ch.schedule_slots || []).map(slot => (
+                          <span key={slot} className="text-xs bg-white border rounded px-2 py-1 flex items-center gap-1">
+                            {slot}
+                            <button onClick={() => removeSlot(ch, slot)} className="text-red-400 hover:text-red-600 ml-1">×</button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <input type="time" value={newSlot} onChange={e => setNewSlot(e.target.value)}
+                          className="text-xs border rounded px-2 py-1" />
+                        <button onClick={() => addSlot(ch)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded">Ekle</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 ml-4">
+                  <button onClick={() => toggleStatus(ch)}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium ${ch.status === 'active' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                    {ch.status === 'active' ? 'Durdur' : 'Başlat'}
+                  </button>
+                  <button onClick={() => setDeleteConfirm(ch.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-600">Sil</button>
+                </div>
               </div>
             </div>
-
-            <select
-              value={ch.default_model ?? 'Otomatik seÃ§'}
-              onChange={e => updateModel(ch, e.target.value)}
-              disabled={saving === ch.id + '-model'}
-              className="bg-gray-800 text-sm text-white rounded-lg px-3 py-1.5 outline-none disabled:opacity-50"
-            >
-              {MODELS.map(m => <option key={m}>{m}</option>)}
-            </select>
-
-            <button onClick={() => openSettings(ch)}
-              className="bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg text-sm transition">
-              ð Takvim
-            </button>
-
-            <button
-              onClick={() => toggleStatus(ch)}
-              disabled={saving === ch.id}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50 ${
-                ch.status === 'active'
-                  ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-            >
-              {ch.status === 'active' ? 'Aktif' : 'Pasif'}
-            </button>
-
-            <button onClick={() => setDeleteId(ch.id)} className="text-red-400 hover:text-red-300 px-2 text-sm">
-              Sil
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* Schedule Slots Modal */}
-      {settingsCh && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-5 border-b border-gray-800">
-              <h2 className="font-semibold">YayÄ±n Takvimi â {settingsCh.name}</h2>
-              <button onClick={() => setSettingsCh(null)} className="text-gray-400 hover:text-white text-xl leading-none">Ã</button>
-            </div>
-            <div className="p-5 space-y-2 max-h-64 overflow-y-auto">
-              {slotsLoading && <p className="text-gray-500 text-sm text-center py-4">YÃ¼kleniyor...</p>}
-              {!slotsLoading && slots.length === 0 && <p className="text-gray-500 text-sm text-center py-4">HenÃ¼z slot yok.</p>}
-              {slots.map(sl => (
-                <div key={sl.id} className="flex items-center justify-between bg-gray-800 rounded-lg px-4 py-2.5">
-                  <span className="text-sm">
-                    {sl.format === 'shorts' ? 'ð©³ Shorts' : 'ð¬ Uzun Video'} Â· {sl.publish_time}
-                  </span>
-                  <button onClick={() => removeSlot(sl.id)} className="text-red-400 hover:text-red-300 text-xs">KaldÄ±r</button>
-                </div>
-              ))}
-            </div>
-            <div className="p-5 border-t border-gray-800 flex gap-2">
-              <select
-                value={newSlot.format}
-                onChange={e => setNewSlot(s => ({ ...s, format: e.target.value }))}
-                className="bg-gray-800 text-sm text-white rounded-lg px-3 py-2 outline-none"
-              >
-                <option value="shorts">Shorts</option>
-                <option value="long">Uzun Video</option>
-              </select>
-              <input
-                type="time"
-                value={newSlot.publish_time}
-                onChange={e => setNewSlot(s => ({ ...s, publish_time: e.target.value }))}
-                className="bg-gray-800 text-sm text-white rounded-lg px-3 py-2 outline-none flex-1"
-              />
-              <button onClick={addSlot}
-                className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-sm font-medium transition">
-                Ekle
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
       )}
 
-      {/* Delete Confirm Modal */}
-      {deleteId && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-xl w-80 p-6 text-center">
-            <p className="text-white mb-2 font-medium">KanalÄ± sil?</p>
-            <p className="text-gray-400 text-sm mb-5">Bu iÅlem geri alÄ±namaz.</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={() => setDeleteId(null)}
-                className="bg-gray-800 hover:bg-gray-700 px-5 py-2 rounded-lg text-sm transition">Ä°ptal</button>
-              <button onClick={() => deleteChannel(deleteId)}
-                className="bg-red-600 hover:bg-red-500 px-5 py-2 rounded-lg text-sm transition">Sil</button>
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full">
+            <h3 className="font-semibold mb-2">Kanalı sil</h3>
+            <p className="text-sm text-gray-600 mb-4">Bu kanal kalıcı olarak silinecek. Emin misin?</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 border rounded-lg text-sm">İptal</button>
+              <button onClick={() => deleteChannel(deleteConfirm)} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm">Sil</button>
             </div>
           </div>
         </div>
