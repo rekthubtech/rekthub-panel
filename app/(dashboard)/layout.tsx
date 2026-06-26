@@ -4,15 +4,15 @@ import { usePathname, useRouter } from 'next/navigation'
 import { clearToken } from '@/lib/api'
 
 const NAV = [
-  { href: '/channels',  label: 'Kanallar' },
-  { href: '/concepts',  label: 'Konseptler' },
+  { href: '/channels', label: 'Kanallar' },
+  { href: '/concepts', label: 'Konseptler' },
   { href: '/analytics', label: 'Maliyet & Analitik' },
-  { href: '/settings',  label: 'Ayarlar' },
+  { href: '/settings', label: 'Ayarlar' },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router   = useRouter()
+  const router = useRouter()
 
   function logout() {
     clearToken()
@@ -20,33 +20,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex h-screen bg-gray-950 text-white overflow-hidden">
-      <aside className="w-56 bg-gray-900 flex flex-col shrink-0">
-        <div className="px-6 py-5 border-b border-gray-800">
-          <span className="text-lg font-bold text-green-400">RektHub</span>
-          <span className="text-gray-600 text-xs ml-1">Panel</span>
+    <div className="flex h-screen bg-gray-50">
+      <aside className="w-56 bg-white border-r border-gray-100 flex flex-col">
+        <div className="p-5 border-b border-gray-100">
+          <span className="font-bold text-lg text-gray-900">RektHub</span>
         </div>
-        <nav className="flex-1 p-3 space-y-0.5">
-          {NAV.map(n => (
+        <nav className="flex-1 p-3 space-y-1">
+          {NAV.map(item => (
             <Link
-              key={n.href}
-              href={n.href}
-              className={`flex items-center px-4 py-2.5 rounded-lg text-sm transition-colors ${
-                pathname.startsWith(n.href)
-                  ? 'bg-green-600 text-white font-medium'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              key={item.href}
+              href={item.href}
+              className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                pathname.startsWith(item.href)
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {n.label}
+              {item.label}
             </Link>
           ))}
         </nav>
-        <div className="p-3 border-t border-gray-800">
+        <div className="p-3 border-t border-gray-100">
           <button
             onClick={logout}
-            className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="w-full px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg text-left"
           >
-            ÃÄ±kÄ±Å Yap
+            Çıkış
           </button>
         </div>
       </aside>
