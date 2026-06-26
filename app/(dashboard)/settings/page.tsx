@@ -38,7 +38,7 @@ export default function SettingsPage() {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.put('/settings', settings)
+      await api.patch('/settings', settings)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } finally { setSaving(false) }
