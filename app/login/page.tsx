@@ -4,65 +4,60 @@ import { useRouter } from 'next/navigation'
 import { api, setToken } from '@/lib/api'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError('')
     setLoading(true)
+    setError('')
     try {
       const data = await api.post<{ token: string }>('/auth/login', { email, password })
       setToken(data.token)
       router.push('/channels')
-    } catch (err: unknown) {
-      setError((err as Error).message || 'GiriÅ baÅarÄ±sÄ±z')
+    } catch {
+      setError('E-posta veya şifre hatalı')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="w-full max-w-sm px-4">
-        <h1 className="text-2xl font-bold text-white text-center mb-2">RektHub Panel</h1>
-        <p className="text-gray-500 text-center text-sm mb-8">YÃ¶netim arayÃ¼zÃ¼</p>
-        <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl p-8 space-y-5">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 w-full max-w-sm">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">RektHub Panel</h1>
+        <p className="text-sm text-gray-500 mb-6">Yönetim arayüzü</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">E-posta</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">E-posta</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 transition"
               required
-              autoFocus
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Åifre</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Şifre</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500 transition"
               required
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          {error && (
-            <div className="bg-red-900/30 border border-red-800 text-red-400 text-sm px-4 py-2.5 rounded-lg">
-              {error}
-            </div>
-          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition"
+            className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? 'GiriÅ yapÄ±lÄ±yor...' : 'GiriÅ Yap'}
+            {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
           </button>
         </form>
       </div>
