@@ -54,12 +54,13 @@ export default function ConceptsPage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api.post('/concepts/suggestions', {
+      const body: Record<string, unknown> = {
         suggested_name: form.suggested_name,
         suggested_prompt: form.suggested_prompt || null,
         rationale: form.rationale || null,
-        channel_id: form.channel_id || null,
-      })
+      }
+      if (form.channel_id) body.channel_id = form.channel_id
+      await api.post('/concepts/suggestions', body)
       setForm({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '' })
       setShowForm(false)
       fetchData()
@@ -74,7 +75,7 @@ export default function ConceptsPage() {
 
   const statusLabel: Record<string, string> = {
     pending: 'Bekliyor',
-    approved: 'Onaylandı',
+    approved: 'Onaylandi',
     rejected: 'Reddedildi',
   }
 
@@ -84,7 +85,7 @@ export default function ConceptsPage() {
     rejected: 'bg-red-100 text-red-700',
   }
 
-  if (loading) return <div className="p-8 text-center">Yükleniyor…</div>
+  if (loading) return <div className="p-8 text-center">Yukleniyor...</div>
 
   return (
     <div className="p-6">
@@ -95,7 +96,7 @@ export default function ConceptsPage() {
             {statuses.map(s => (
               <button key={s} onClick={() => setFilter(s)}
                 className={`text-xs px-3 py-1.5 rounded-lg font-medium ${filter === s ? 'bg-gray-800 text-white' : 'bg-white border text-gray-600'}`}>
-                {s === 'all' ? 'Tümü' : statusLabel[s]}
+                {s === 'all' ? 'Tumu' : statusLabel[s]}
               </button>
             ))}
           </div>
@@ -109,22 +110,22 @@ export default function ConceptsPage() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-6">
-          <h3 className="font-semibold mb-4">Yeni Konsept Önerisi</h3>
+          <h3 className="font-semibold mb-4">Yeni Konsept Onerisi</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 block mb-1">Başlık *</label>
+              <label className="text-xs text-gray-500 block mb-1">Baslik *</label>
               <input required value={form.suggested_name}
                 onChange={e => setForm(f => ({ ...f, suggested_name: e.target.value }))}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                placeholder="Video konsept başlığı" />
+                placeholder="Video konsept basligi" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 block mb-1">Prompt / Açıklama</label>
+              <label className="text-xs text-gray-500 block mb-1">Prompt / Aciklama</label>
               <textarea value={form.suggested_prompt}
                 onChange={e => setForm(f => ({ ...f, suggested_prompt: e.target.value }))}
                 rows={3}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                placeholder="Video için kullanılacak AI prompt veya içerik açıklaması…" />
+                placeholder="Video icin kullanilacak AI prompt..." />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Kanal</label>
@@ -136,7 +137,7 @@ export default function ConceptsPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Gerekçe</label>
+              <label className="text-xs text-gray-500 block mb-1">Gerekce</label>
               <input value={form.rationale}
                 onChange={e => setForm(f => ({ ...f, rationale: e.target.value }))}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
@@ -145,11 +146,11 @@ export default function ConceptsPage() {
             <div className="col-span-2 flex gap-2 justify-end">
               <button type="button" onClick={() => setShowForm(false)}
                 className="text-sm px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
-                İptal
+                Iptal
               </button>
               <button type="submit" disabled={submitting}
                 className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {submitting ? 'Kaydediliyor…' : 'Kaydet'}
+                {submitting ? 'Kaydediliyor...' : 'Kaydet'}
               </button>
             </div>
           </div>
@@ -158,10 +159,10 @@ export default function ConceptsPage() {
 
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl p-12 text-center border border-gray-100">
-          <p className="text-gray-500 mb-3">Konsept bulunamadı.</p>
+          <p className="text-gray-500 mb-3">Konsept bulunamadi.</p>
           <button onClick={() => setShowForm(true)}
             className="text-sm text-blue-600 hover:underline">
-            İlk konsepti ekle →
+            Ilk konsepti ekle
           </button>
         </div>
       ) : (
@@ -177,7 +178,7 @@ export default function ConceptsPage() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 mb-2">
-                    {channelName(s.channel_id)} · {new Date(s.created_at).toLocaleDateString('tr-TR')}
+                    {channelName(s.channel_id)} - {new Date(s.created_at).toLocaleDateString('tr-TR')}
                   </p>
                   {s.suggested_prompt && (
                     <p className="text-sm text-gray-600 line-clamp-2">{s.suggested_prompt}</p>
