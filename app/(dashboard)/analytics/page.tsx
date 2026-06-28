@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
     setLoading(true)
     try {
       const [s, v, summary, manual, ch] = await Promise.all([
-        api.get<Stats>('/analytics/stats'),
+        api.get<Stats>('/analytics/summary'),
         api.get<VideoRow[]>('/analytics/recent-videos'),
         api.get<any>('/costs/summary').catch(() => null),
         api.get<ManualExpense[]>('/costs/manual').catch(() => []),
