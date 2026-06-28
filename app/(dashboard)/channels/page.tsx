@@ -64,7 +64,7 @@ export default function ChannelsPage() {
   }
 
   function startOAuth() {
-    window.location.href = `${NEXT_PUBLIC_API_URL}/auth/google/start`
+    window.location.href = `${NEXT_PUBLIC_API_URL}/auth/youtube`
   }
 
   if (loading) return <div className="p-8 text-center">Yükleniyor…</div>
