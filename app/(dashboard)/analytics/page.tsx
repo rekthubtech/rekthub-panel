@@ -19,6 +19,24 @@ interface ChannelCost {
 interface ManualExpense {
   id: string; description: string; amount: number;
   expense_date: string; channel_name_snapshot?: string; category?: string;
+  currency?: string;
+}
+
+const CURRENCIES = [
+  { code: 'TRY', symbol: '₺', label: 'Türk Lirası (₺)' },
+  { code: 'USD', symbol: '$', label: 'Dolar ($)' },
+  { code: 'EUR', symbol: '€', label: 'Euro (€)' },
+  { code: 'GBP', symbol: '£', label: 'Pound (£)' },
+  { code: 'AED', symbol: 'د.إ', label: 'Dirhem (د.إ)' },
+]
+
+const getCurrencySymbol = (code?: string) =>
+  CURRENCIES.find(c => c.code === (code || 'TRY'))?.symbol || '₺'
+
+const fmtAmount = (n: number, currency?: string) => {
+  const sym = getCurrencySymbol(currency)
+  const formatted = Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return `${sym}${formatted}`
 }
 
 const fmt = (n: number) => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -35,7 +53,7 @@ export default function AnalyticsPage() {
   const [form, setForm] = useState({
     description: '', amount: '',
     expense_date: new Date().toISOString().slice(0, 10),
-    channel_id: '', category: '',
+    channel_id: '', category: '', currency: 'TRY',
   })
 
   useEffect(() => { fetchData() }, [])
@@ -68,8 +86,9 @@ export default function AnalyticsPage() {
         expense_date: form.expense_date,
         channel_id: form.channel_id || null,
         category: form.category || null,
+        currency: form.currency,
       })
-      setForm({ description: '', amount: '', expense_date: new Date().toISOString().slice(0, 10), channel_id: '', category: '' })
+      setForm({ description: '', amount: '', expense_date: new Date().toISOString().slice(0, 10), channel_id: '', category: '', currency: 'TRY' })
       setShowForm(false)
       fetchData()
     } finally { setSubmitting(false) }
@@ -80,6 +99,12 @@ export default function AnalyticsPage() {
     await api.delete(`/costs/manual/${id}`)
     fetchData()
   }
+
+  const currencyTotals = manualExpenses.reduce((acc, exp) => {
+    const cur = exp.currency || 'TRY'
+    acc[cur] = (acc[cur] || 0) + Number(exp.amount)
+    return acc
+  }, {} as Record<string, number>)
 
   const statusLabel: Record<string, string> = {
     pending: 'Bekliyor', running: 'Çalışıyor', completed: 'Tamamlandı',
@@ -99,7 +124,7 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6 space-y-8">
 
-      {/* ── ANALİTİK ── */}
+      {/* ANALİTİK */}
       <div className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Analitik</h2>
 
@@ -119,7 +144,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* Son Videolar */}
         <div className="bg-gray-900 rounded-xl border border-gray-800">
           <div className="p-5 border-b border-gray-800">
             <h3 className="font-semibold text-white">Son Videolar</h3>
@@ -146,11 +170,21 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* ── MALİYET ── */}
+      {/* MALİYET */}
       <div className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Maliyet</h2>
 
-        {/* Kanal Bazlı Maliyet */}
+        {Object.keys(currencyTotals).length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {Object.entries(currencyTotals).map(([cur, total]) => (
+              <div key={cur} className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                <p className="text-xs text-gray-400 mb-1">Toplam Gider ({cur})</p>
+                <p className="text-xl font-bold text-red-400">{fmtAmount(total, cur)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {channelCosts.length > 0 && (
           <div className="bg-gray-900 rounded-xl border border-gray-800">
             <div className="p-5 border-b border-gray-800">
@@ -183,7 +217,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* Manuel Giderler */}
         <div className="bg-gray-900 rounded-xl border border-gray-800">
           <div className="p-5 border-b border-gray-800 flex items-center justify-between">
             <h3 className="font-semibold text-white">Manuel Giderler</h3>
@@ -204,11 +237,19 @@ export default function AnalyticsPage() {
                   placeholder="Gider açıklaması" />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Tutar (₺) *</label>
+                <label className="text-xs text-gray-400 block mb-1">Tutar *</label>
                 <input required type="number" step="0.01" min="0" value={form.amount}
                   onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Para Birimi *</label>
+                <select value={form.currency}
+                  onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Tarih *</label>
@@ -260,7 +301,7 @@ export default function AnalyticsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-red-400">{fmt(exp.amount)}</span>
+                    <span className="text-sm font-semibold text-red-400">{fmtAmount(exp.amount, exp.currency)}</span>
                     <button onClick={() => handleDelete(exp.id)}
                       className="text-xs text-gray-500 hover:text-red-400 transition-colors">Sil</button>
                   </div>
