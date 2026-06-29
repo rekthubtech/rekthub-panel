@@ -6,20 +6,22 @@ interface Stats {
   total_videos: number; published_today: number; pending_concepts: number;
   active_channels: number; total_channels: number;
 }
+
 interface VideoRow {
   id: number; title: string; channel_name: string; status: string; published_at: string;
 }
+
 interface ChannelCost {
   channel_id: string; channel_name: string;
   estimated_cost: number; manual_total: number; total: number;
 }
+
 interface ManualExpense {
   id: string; description: string; amount: number;
   expense_date: string; channel_name_snapshot?: string; category?: string;
 }
 
-const cardCls = 'bg-gray-800 rounded-xl border border-gray-700 shadow-sm'
-const inputCls = 'w-full border border-gray-600 bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+const fmt = (n: number) => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
@@ -80,176 +82,194 @@ export default function AnalyticsPage() {
   }
 
   const statusLabel: Record<string, string> = {
-    pending: 'Bekliyor', running: 'Calisiyor', completed: 'Tamamlandi',
-    processing: 'Isleniyor', done: 'Tamamlandi', failed: 'Basarisiz',
+    pending: 'Bekliyor', running: 'Çalışıyor', completed: 'Tamamlandı',
+    processing: 'İşleniyor', done: 'Tamamlandı', failed: 'Başarısız',
   }
   const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-900/40 text-yellow-400',
-    running: 'bg-blue-900/40 text-blue-400',
-    processing: 'bg-blue-900/40 text-blue-400',
-    completed: 'bg-green-900/40 text-green-400',
-    done: 'bg-green-900/40 text-green-400',
-    failed: 'bg-red-900/40 text-red-400',
+    pending: 'bg-yellow-500/20 text-yellow-300',
+    running: 'bg-blue-500/20 text-blue-300',
+    processing: 'bg-blue-500/20 text-blue-300',
+    completed: 'bg-green-500/20 text-green-300',
+    done: 'bg-green-500/20 text-green-300',
+    failed: 'bg-red-500/20 text-red-300',
   }
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Yukleniyor...</div>
+  if (loading) return <div className="p-8 text-center text-gray-400">Yükleniyor…</div>
 
   return (
-    <div className="p-6 space-y-6">
-      <h2 className="text-2xl font-bold text-white">Maliyet & Analitik</h2>
+    <div className="p-6 space-y-8">
 
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Toplam Video', value: stats.total_videos },
-            { label: 'Bugun Yayinlanan', value: stats.published_today },
-            { label: 'Bekleyen Konsept', value: stats.pending_concepts },
-            { label: 'Aktif Kanal', value: `${stats.active_channels} / ${stats.total_channels}` },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-sm">
-              <p className="text-xs text-gray-500 mb-1">{label}</p>
-              <p className="text-2xl font-bold text-white">{value}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ── ANALİTİK ── */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-white">Analitik</h2>
 
-      {channelCosts.length > 0 && (
-        <div className={cardCls}>
-          <div className="p-5 border-b border-gray-700">
-            <h3 className="font-semibold text-white">Kanal Bazli Maliyet</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-900">
-                <tr>
-                  <th className="text-left px-5 py-3 text-xs text-gray-500 font-medium">Kanal</th>
-                  <th className="text-right px-5 py-3 text-xs text-gray-500 font-medium">AI Maliyet</th>
-                  <th className="text-right px-5 py-3 text-xs text-gray-500 font-medium">Manuel Gider</th>
-                  <th className="text-right px-5 py-3 text-xs text-gray-500 font-medium">Toplam</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {channelCosts.map((c) => (
-                  <tr key={c.channel_id || c.channel_name}>
-                    <td className="px-5 py-3 font-medium text-gray-200">{c.channel_name}</td>
-                    <td className="px-5 py-3 text-right text-gray-400">${Number(c.estimated_cost || 0).toFixed(4)}</td>
-                    <td className="px-5 py-3 text-right text-gray-400">${Number(c.manual_total || 0).toFixed(4)}</td>
-                    <td className={`px-5 py-3 text-right font-semibold ${Number(c.total || 0) > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                      ${Number(c.total || 0).toFixed(4)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      <div className={cardCls}>
-        <div className="p-5 border-b border-gray-700 flex items-center justify-between">
-          <h3 className="font-semibold text-white">Manuel Giderler</h3>
-          <button onClick={() => setShowForm(!showForm)}
-            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors">
-            + Manuel Gider Ekle
-          </button>
-        </div>
-
-        {showForm && (
-          <form onSubmit={handleSubmit} className="p-5 border-b border-gray-700 bg-gray-900 grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="text-xs text-gray-400 block mb-1">Aciklama *</label>
-              <input required value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className={inputCls} placeholder="Gider aciklamasi" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Tutar ($) *</label>
-              <input required type="number" step="0.0001" min="0" value={form.amount}
-                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                className={inputCls} placeholder="0.0000" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Tarih *</label>
-              <input required type="date" value={form.expense_date}
-                onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))}
-                className={inputCls} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Kanal</label>
-              <select value={form.channel_id}
-                onChange={e => setForm(f => ({ ...f, channel_id: e.target.value }))}
-                className={inputCls}>
-                <option value="">Genel Gider</option>
-                {channels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Kategori</label>
-              <input value={form.category}
-                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className={inputCls} placeholder="sunucu, yazilim, reklam..." />
-            </div>
-            <div className="col-span-2 flex gap-2 justify-end">
-              <button type="button" onClick={() => setShowForm(false)}
-                className="text-sm px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors">Iptal</button>
-              <button type="submit" disabled={submitting}
-                className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {submitting ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {manualExpenses.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 text-sm">Henuz manuel gider yok.</div>
-        ) : (
-          <div className="divide-y divide-gray-700">
-            {manualExpenses.map(exp => (
-              <div key={exp.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-200">{exp.description}</p>
-                  <p className="text-xs text-gray-500">
-                    {exp.channel_name_snapshot || 'Genel Gider'}
-                    {exp.category ? ` · ${exp.category}` : ''}
-                    {' · '}{new Date(exp.expense_date).toLocaleDateString('tr-TR')}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-red-400">${Number(exp.amount).toFixed(4)}</span>
-                  <button onClick={() => handleDelete(exp.id)}
-                    className="text-xs text-gray-500 hover:text-red-400 transition-colors">Sil</button>
-                </div>
+        {stats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Toplam Video', value: stats.total_videos },
+              { label: 'Bugün Yayınlanan', value: stats.published_today },
+              { label: 'Bekleyen Konsept', value: stats.pending_concepts },
+              { label: 'Aktif Kanal', value: `${stats.active_channels} / ${stats.total_channels}` },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+                <p className="text-xs text-gray-400 mb-1">{label}</p>
+                <p className="text-2xl font-bold text-white">{value}</p>
               </div>
             ))}
           </div>
         )}
+
+        {/* Son Videolar */}
+        <div className="bg-gray-900 rounded-xl border border-gray-800">
+          <div className="p-5 border-b border-gray-800">
+            <h3 className="font-semibold text-white">Son Videolar</h3>
+          </div>
+          {recent.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 text-sm">Henüz video yok.</div>
+          ) : (
+            <div className="divide-y divide-gray-800">
+              {recent.map(v => (
+                <div key={v.id} className="flex items-center justify-between px-5 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-white">{v.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {v.channel_name} · {v.published_at ? new Date(v.published_at).toLocaleDateString('tr-TR') : '—'}
+                    </p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[v.status] || 'bg-gray-700 text-gray-400'}`}>
+                    {statusLabel[v.status] || v.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className={cardCls}>
-        <div className="p-5 border-b border-gray-700">
-          <h3 className="font-semibold text-white">Son Videolar</h3>
-        </div>
-        {recent.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 text-sm">Henuz video yok.</div>
-        ) : (
-          <div className="divide-y divide-gray-700">
-            {recent.map(v => (
-              <div key={v.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-200">{v.title}</p>
-                  <p className="text-xs text-gray-500">
-                    {v.channel_name} · {v.published_at ? new Date(v.published_at).toLocaleDateString('tr-TR') : '-'}
-                  </p>
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[v.status] || 'bg-gray-700 text-gray-400'}`}>
-                  {statusLabel[v.status] || v.status}
-                </span>
-              </div>
-            ))}
+      {/* ── MALİYET ── */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-white">Maliyet</h2>
+
+        {/* Kanal Bazlı Maliyet */}
+        {channelCosts.length > 0 && (
+          <div className="bg-gray-900 rounded-xl border border-gray-800">
+            <div className="p-5 border-b border-gray-800">
+              <h3 className="font-semibold text-white">Kanal Bazlı Maliyet</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-800/50">
+                  <tr>
+                    <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Kanal</th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">AI Maliyet</th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Manuel Gider</th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Toplam</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {channelCosts.map((c) => (
+                    <tr key={c.channel_id || c.channel_name}>
+                      <td className="px-5 py-3 font-medium text-white">{c.channel_name}</td>
+                      <td className="px-5 py-3 text-right text-gray-400">{fmt(c.estimated_cost)}</td>
+                      <td className="px-5 py-3 text-right text-gray-400">{fmt(c.manual_total)}</td>
+                      <td className={`px-5 py-3 text-right font-semibold ${Number(c.total || 0) > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                        {fmt(c.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
+
+        {/* Manuel Giderler */}
+        <div className="bg-gray-900 rounded-xl border border-gray-800">
+          <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+            <h3 className="font-semibold text-white">Manuel Giderler</h3>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors">
+              + Manuel Gider Ekle
+            </button>
+          </div>
+
+          {showForm && (
+            <form onSubmit={handleSubmit} className="p-5 border-b border-gray-800 bg-gray-800/50 grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="text-xs text-gray-400 block mb-1">Açıklama *</label>
+                <input required value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Gider açıklaması" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Tutar (₺) *</label>
+                <input required type="number" step="0.01" min="0" value={form.amount}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Tarih *</label>
+                <input required type="date" value={form.expense_date}
+                  onChange={e => setForm(f => ({ ...f, expense_date: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Kanal</label>
+                <select value={form.channel_id}
+                  onChange={e => setForm(f => ({ ...f, channel_id: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Genel Gider</option>
+                  {channels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Kategori</label>
+                <input value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="sunucu, yazılım, reklam…" />
+              </div>
+              <div className="col-span-2 flex gap-2 justify-end">
+                <button type="button" onClick={() => setShowForm(false)}
+                  className="text-sm px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors">
+                  İptal
+                </button>
+                <button type="submit" disabled={submitting}
+                  className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {submitting ? 'Kaydediliyor…' : 'Kaydet'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {manualExpenses.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 text-sm">Henüz manuel gider yok.</div>
+          ) : (
+            <div className="divide-y divide-gray-800">
+              {manualExpenses.map(exp => (
+                <div key={exp.id} className="flex items-center justify-between px-5 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-white">{exp.description}</p>
+                    <p className="text-xs text-gray-500">
+                      {exp.channel_name_snapshot || 'Genel Gider'}
+                      {exp.category ? ` · ${exp.category}` : ''}
+                      {' · '}{new Date(exp.expense_date).toLocaleDateString('tr-TR')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-red-400">{fmt(exp.amount)}</span>
+                    <button onClick={() => handleDelete(exp.id)}
+                      className="text-xs text-gray-500 hover:text-red-400 transition-colors">Sil</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
-              }
+}
