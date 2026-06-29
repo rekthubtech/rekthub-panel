@@ -21,12 +21,14 @@ const STATUS_LABEL: Record<string, string> = {
   pending: 'Bekliyor',
   approved: 'Onaylandi',
   rejected: 'Reddedildi',
+  testing: 'Test Ediliyor',
 }
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-500/20 text-yellow-300',
   approved: 'bg-green-500/20 text-green-300',
   rejected: 'bg-red-500/20 text-red-300',
+  testing: 'bg-purple-500/20 text-purple-300',
 }
 
 export default function ConceptsPage() {
@@ -40,6 +42,8 @@ export default function ConceptsPage() {
   const [editForm, setEditForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '', status: 'pending' })
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '' })
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; video_url?: string } | null>(null)
 
   useEffect(() => { fetchData() }, [])
 
@@ -64,6 +68,13 @@ export default function ConceptsPage() {
       channel_id: s.channel_id || '',
       status: s.status,
     })
+    setTestResult(null)
+  }
+
+  function closeDetail() {
+    setSelected(null)
+    setTestResult(null)
+    setTesting(false)
   }
 
   async function handleSave() {
@@ -85,7 +96,7 @@ export default function ConceptsPage() {
         channel_id: editForm.channel_id || null,
         status: editForm.status,
       } : s))
-      setSelected(null)
+      closeDetail()
     } finally { setSaving(false) }
   }
 
@@ -94,7 +105,35 @@ export default function ConceptsPage() {
     if (!confirm('Bu konsepti silmek istiyor musunuz?')) return
     await api.delete(`/concepts/suggestions/${selected.id}`)
     setSuggestions(prev => prev.filter(s => s.id !== selected.id))
-    setSelected(null)
+    closeDetail()
+  }
+
+  async function handleTest() {
+    if (!selected || testing) return
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const result = await api.post<{ success: boolean; video_url?: string; telegram_sent?: boolean; error?: string }>(
+        `/concepts/suggestions/${selected.id}/test`,
+        {}
+      )
+      if (result.success) {
+        setTestResult({
+          success: true,
+          message: result.telegram_sent ? "Video Telegram'a gönderildi!" : 'Video olusturuldu!',
+          video_url: result.video_url,
+        })
+        setSuggestions(prev => prev.map(s => s.id === selected.id ? { ...s, status: 'testing' } : s))
+        setSelected(prev => prev ? { ...prev, status: 'testing' } : prev)
+      } else {
+        setTestResult({ success: false, message: result.error || 'Video olusturulamadi.' })
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Bir hata olustu.'
+      setTestResult({ success: false, message: msg })
+    } finally {
+      setTesting(false)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -117,7 +156,7 @@ export default function ConceptsPage() {
   const channelName = (id: string | null) =>
     id ? (channels.find(c => c.id === id)?.name || id) : 'Genel'
 
-  const statuses = ['all', 'pending', 'approved', 'rejected']
+  const statuses = ['all', 'pending', 'approved', 'rejected', 'testing']
   const filtered = filter === 'all' ? suggestions : suggestions.filter(s => s.status === filter)
 
   if (loading) return <div className="p-8 text-center text-gray-400">Yukleniyor...</div>
@@ -231,7 +270,7 @@ export default function ConceptsPage() {
           <div className="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-2xl shadow-2xl">
             <div className="flex justify-between items-center p-6 border-b border-gray-800">
               <h3 className="font-bold text-lg text-white">Konsept Duzenle</h3>
-              <button onClick={() => setSelected(null)} className="text-gray-500 hover:text-white text-xl leading-none">✕</button>
+              <button onClick={closeDetail} className="text-gray-500 hover:text-white text-xl leading-none">✕</button>
             </div>
             <div className="p-6 space-y-4">
               <div>
@@ -265,6 +304,7 @@ export default function ConceptsPage() {
                     <option value="pending">Bekliyor</option>
                     <option value="approved">Onaylandi</option>
                     <option value="rejected">Reddedildi</option>
+                    <option value="testing">Test Ediliyor</option>
                   </select>
                 </div>
               </div>
@@ -274,15 +314,56 @@ export default function ConceptsPage() {
                   onChange={e => setEditForm(f => ({ ...f, rationale: e.target.value }))}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+
+              {/* Test result feedback */}
+              {testing && (
+                <div className="flex items-center gap-3 bg-purple-900/30 border border-purple-700/50 rounded-lg px-4 py-3">
+                  <svg className="animate-spin h-4 w-4 text-purple-400 shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-purple-300 font-medium">Video olusturuluyor...</p>
+                    <p className="text-xs text-purple-400/70">Bu islem 2-5 dakika surebilir. Lutfen bekleyin.</p>
+                  </div>
+                </div>
+              )}
+              {testResult && (
+                <div className={`rounded-lg px-4 py-3 border ${testResult.success ? 'bg-green-900/30 border-green-700/50' : 'bg-red-900/30 border-red-700/50'}`}>
+                  <p className={`text-sm font-medium ${testResult.success ? 'text-green-300' : 'text-red-300'}`}>
+                    {testResult.success ? '✓' : '✗'} {testResult.message}
+                  </p>
+                  {testResult.video_url && (
+                    <a href={testResult.video_url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-green-400 hover:underline mt-1 block break-all">
+                      {testResult.video_url}
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex justify-between items-center p-6 border-t border-gray-800">
               <button onClick={handleDelete} className="text-sm text-red-400 hover:text-red-300 transition-colors">
                 Sil
               </button>
               <div className="flex gap-2">
-                <button onClick={() => setSelected(null)}
+                <button onClick={closeDetail}
                   className="text-sm px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors">
                   Iptal
+                </button>
+                <button
+                  onClick={handleTest}
+                  disabled={testing}
+                  className="text-sm bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center gap-2">
+                  {testing ? (
+                    <>
+                      <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      Test ediliyor...
+                    </>
+                  ) : '▶ Test Et'}
                 </button>
                 <button onClick={handleSave} disabled={saving}
                   className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
