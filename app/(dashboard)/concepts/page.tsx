@@ -17,6 +17,18 @@ interface Channel {
   name: string
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Bekliyor',
+  approved: 'Onaylandi',
+  rejected: 'Reddedildi',
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-yellow-500/20 text-yellow-300',
+  approved: 'bg-green-500/20 text-green-300',
+  rejected: 'bg-red-500/20 text-red-300',
+}
+
 export default function ConceptsPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
@@ -24,12 +36,10 @@ export default function ConceptsPage() {
   const [filter, setFilter] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [form, setForm] = useState({
-    suggested_name: '',
-    suggested_prompt: '',
-    rationale: '',
-    channel_id: '',
-  })
+  const [selected, setSelected] = useState<Suggestion | null>(null)
+  const [editForm, setEditForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '', status: 'pending' })
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '' })
 
   useEffect(() => { fetchData() }, [])
 
@@ -45,9 +55,46 @@ export default function ConceptsPage() {
     } finally { setLoading(false) }
   }
 
-  async function updateStatus(id: string, status: string) {
-    await api.patch(`/concepts/suggestions/${id}`, { status })
-    setSuggestions(prev => prev.map(s => s.id === id ? { ...s, status } : s))
+  function openDetail(s: Suggestion) {
+    setSelected(s)
+    setEditForm({
+      suggested_name: s.suggested_name,
+      suggested_prompt: s.suggested_prompt || '',
+      rationale: s.rationale || '',
+      channel_id: s.channel_id || '',
+      status: s.status,
+    })
+  }
+
+  async function handleSave() {
+    if (!selected) return
+    setSaving(true)
+    try {
+      await api.patch(`/concepts/suggestions/${selected.id}`, {
+        suggested_name: editForm.suggested_name,
+        suggested_prompt: editForm.suggested_prompt || null,
+        rationale: editForm.rationale || null,
+        channel_id: editForm.channel_id || null,
+        status: editForm.status,
+      })
+      setSuggestions(prev => prev.map(s => s.id === selected.id ? {
+        ...s,
+        suggested_name: editForm.suggested_name,
+        suggested_prompt: editForm.suggested_prompt || null,
+        rationale: editForm.rationale || null,
+        channel_id: editForm.channel_id || null,
+        status: editForm.status,
+      } : s))
+      setSelected(null)
+    } finally { setSaving(false) }
+  }
+
+  async function handleDelete() {
+    if (!selected) return
+    if (!confirm('Bu konsepti silmek istiyor musunuz?')) return
+    await api.delete(`/concepts/suggestions/${selected.id}`)
+    setSuggestions(prev => prev.filter(s => s.id !== selected.id))
+    setSelected(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -73,35 +120,22 @@ export default function ConceptsPage() {
   const statuses = ['all', 'pending', 'approved', 'rejected']
   const filtered = filter === 'all' ? suggestions : suggestions.filter(s => s.status === filter)
 
-  const statusLabel: Record<string, string> = {
-    pending: 'Bekliyor',
-    approved: 'Onaylandi',
-    rejected: 'Reddedildi',
-  }
-
-  const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-700',
-    approved: 'bg-green-100 text-green-700',
-    rejected: 'bg-red-100 text-red-700',
-  }
-
-  if (loading) return <div className="p-8 text-center">Yukleniyor...</div>
+  if (loading) return <div className="p-8 text-center text-gray-400">Yukleniyor...</div>
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Konseptler</h2>
+        <h2 className="text-2xl font-bold text-white">Konseptler</h2>
         <div className="flex items-center gap-3">
           <div className="flex gap-2">
             {statuses.map(s => (
               <button key={s} onClick={() => setFilter(s)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium ${filter === s ? 'bg-gray-800 text-white' : 'bg-white border text-gray-600'}`}>
-                {s === 'all' ? 'Tumu' : statusLabel[s]}
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === s ? 'bg-blue-600 text-white' : 'bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700'}`}>
+                {s === 'all' ? 'Tumu' : STATUS_LABEL[s]}
               </button>
             ))}
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
+          <button onClick={() => setShowForm(!showForm)}
             className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
             + Yeni Konsept
           </button>
@@ -109,43 +143,43 @@ export default function ConceptsPage() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-6">
-          <h3 className="font-semibold mb-4">Yeni Konsept Onerisi</h3>
+        <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-6">
+          <h3 className="font-semibold mb-4 text-white">Yeni Konsept Onerisi</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 block mb-1">Baslik *</label>
+              <label className="text-xs text-gray-400 block mb-1">Baslik *</label>
               <input required value={form.suggested_name}
                 onChange={e => setForm(f => ({ ...f, suggested_name: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Video konsept basligi" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 block mb-1">Prompt / Aciklama</label>
+              <label className="text-xs text-gray-400 block mb-1">Prompt / Aciklama</label>
               <textarea value={form.suggested_prompt}
                 onChange={e => setForm(f => ({ ...f, suggested_prompt: e.target.value }))}
                 rows={3}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Video icin kullanilacak AI prompt..." />
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Kanal</label>
+              <label className="text-xs text-gray-400 block mb-1">Kanal</label>
               <select value={form.channel_id}
                 onChange={e => setForm(f => ({ ...f, channel_id: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Genel</option>
                 {channels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Gerekce</label>
+              <label className="text-xs text-gray-400 block mb-1">Gerekce</label>
               <input value={form.rationale}
                 onChange={e => setForm(f => ({ ...f, rationale: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Neden bu konsept? (opsiyonel)" />
             </div>
             <div className="col-span-2 flex gap-2 justify-end">
               <button type="button" onClick={() => setShowForm(false)}
-                className="text-sm px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                className="text-sm px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors">
                 Iptal
               </button>
               <button type="submit" disabled={submitting}
@@ -158,46 +192,105 @@ export default function ConceptsPage() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center border border-gray-100">
+        <div className="bg-gray-900 rounded-xl p-12 text-center border border-gray-800">
           <p className="text-gray-500 mb-3">Konsept bulunamadi.</p>
-          <button onClick={() => setShowForm(true)}
-            className="text-sm text-blue-600 hover:underline">
+          <button onClick={() => setShowForm(true)} className="text-sm text-blue-400 hover:underline">
             Ilk konsepti ekle
           </button>
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map(s => (
-            <div key={s.id} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+            <div key={s.id}
+              onClick={() => openDetail(s)}
+              className="bg-gray-900 rounded-xl p-5 border border-gray-800 cursor-pointer hover:border-blue-500/50 hover:bg-gray-800/80 transition-all">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
-                    <h3 className="font-semibold">{s.suggested_name}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[s.status] || 'bg-gray-100 text-gray-600'}`}>
-                      {statusLabel[s.status] || s.status}
+                    <h3 className="font-semibold text-white">{s.suggested_name}</h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[s.status] || 'bg-gray-700 text-gray-400'}`}>
+                      {STATUS_LABEL[s.status] || s.status}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 mb-2">
+                  <p className="text-xs text-gray-500 mb-2">
                     {channelName(s.channel_id)} - {new Date(s.created_at).toLocaleDateString('tr-TR')}
                   </p>
                   {s.suggested_prompt && (
-                    <p className="text-sm text-gray-600 line-clamp-2">{s.suggested_prompt}</p>
-                  )}
-                  {s.rationale && (
-                    <p className="text-xs text-gray-400 mt-1 italic">{s.rationale}</p>
+                    <p className="text-sm text-gray-400 line-clamp-2">{s.suggested_prompt}</p>
                   )}
                 </div>
-                <div className="ml-4">
-                  <select value={s.status} onChange={e => updateStatus(s.id, e.target.value)}
-                    className="text-xs border rounded-lg px-2 py-1.5">
-                    {['pending', 'approved', 'rejected'].map(st => (
-                      <option key={st} value={st}>{statusLabel[st]}</option>
-                    ))}
-                  </select>
-                </div>
+                <span className="text-xs text-gray-600 ml-4 mt-1">Duzenle →</span>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-2xl shadow-2xl">
+            <div className="flex justify-between items-center p-6 border-b border-gray-800">
+              <h3 className="font-bold text-lg text-white">Konsept Duzenle</h3>
+              <button onClick={() => setSelected(null)} className="text-gray-500 hover:text-white text-xl leading-none">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Baslik *</label>
+                <input value={editForm.suggested_name}
+                  onChange={e => setEditForm(f => ({ ...f, suggested_name: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Prompt / Aciklama</label>
+                <textarea value={editForm.suggested_prompt}
+                  onChange={e => setEditForm(f => ({ ...f, suggested_prompt: e.target.value }))}
+                  rows={5}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Kanal</label>
+                  <select value={editForm.channel_id}
+                    onChange={e => setEditForm(f => ({ ...f, channel_id: e.target.value }))}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Genel</option>
+                    {channels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Durum</label>
+                  <select value={editForm.status}
+                    onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="pending">Bekliyor</option>
+                    <option value="approved">Onaylandi</option>
+                    <option value="rejected">Reddedildi</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Gerekce</label>
+                <input value={editForm.rationale}
+                  onChange={e => setEditForm(f => ({ ...f, rationale: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+            <div className="flex justify-between items-center p-6 border-t border-gray-800">
+              <button onClick={handleDelete} className="text-sm text-red-400 hover:text-red-300 transition-colors">
+                Sil
+              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setSelected(null)}
+                  className="text-sm px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors">
+                  Iptal
+                </button>
+                <button onClick={handleSave} disabled={saving}
+                  className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {saving ? 'Kaydediliyor...' : 'Kaydet'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
