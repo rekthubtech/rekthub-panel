@@ -4,10 +4,34 @@ import { api } from '@/lib/api'
 
 const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
-const MODELS = [
-  'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro',
-  'gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1',
-  'claude-3-5-haiku-20241022', 'claude-3-7-sonnet-20250219',
+const MODEL_GROUPS = [
+  {
+    label: '🎬 Video Modeller (Atlas Cloud)',
+    models: [
+      { id: 'kwaivgi/kling-v3.0-turbo/text-to-video', label: 'Kling V3.0 Turbo' },
+      { id: 'kwaivgi/kling-video-o3-4k/text-to-video', label: 'Kling O3 4K' },
+      { id: 'bytedance/seedance-2.0/text-to-video', label: 'Seedance 2.0' },
+      { id: 'bytedance/seedance-2.0-fast/text-to-video', label: 'Seedance 2.0 Fast' },
+      { id: 'bytedance/seedance-2.0-mini/text-to-video', label: 'Seedance 2.0 Mini' },
+      { id: 'alibaba/wan-2.7/text-to-video', label: 'Wan 2.7' },
+      { id: 'alibaba/happyhorse-1.1/text-to-video', label: 'HappyHorse 1.1' },
+      { id: 'alibaba/happyhorse-1.0/text-to-video', label: 'HappyHorse 1.0' },
+    ],
+  },
+  {
+    label: '🤖 LLM Modeller',
+    models: [
+      { id: 'gemini-2.0-flash', label: 'gemini-2.0-flash' },
+      { id: 'gemini-2.5-flash', label: 'gemini-2.5-flash' },
+      { id: 'gemini-2.5-pro', label: 'gemini-2.5-pro' },
+      { id: 'gpt-4o-mini', label: 'gpt-4o-mini' },
+      { id: 'gpt-4o', label: 'gpt-4o' },
+      { id: 'gpt-4.1-mini', label: 'gpt-4.1-mini' },
+      { id: 'gpt-4.1', label: 'gpt-4.1' },
+      { id: 'claude-3-5-haiku-20241022', label: 'claude-3-5-haiku-20241022' },
+      { id: 'claude-3-7-sonnet-20250219', label: 'claude-3-7-sonnet-20250219' },
+    ],
+  },
 ]
 
 interface Channel {
@@ -105,8 +129,14 @@ export default function ChannelsPage() {
                         <select autoFocus defaultValue={ch.default_model}
                           onChange={e => updateModel(ch.id, e.target.value)}
                           onBlur={() => setEditingModel(null)}
-                          className="text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1">
-                          {MODELS.map(m => <option key={m}>{m}</option>)}
+                          className="text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1 max-w-xs">
+                          {MODEL_GROUPS.map(group => (
+                            <optgroup key={group.label} label={group.label}>
+                              {group.models.map(m => (
+                                <option key={m.id} value={m.id}>{m.label}</option>
+                              ))}
+                            </optgroup>
+                          ))}
                         </select>
                       ) : (
                         <button onClick={() => setEditingModel(ch.id)} className="text-xs text-blue-400 hover:underline">
@@ -163,4 +193,4 @@ export default function ChannelsPage() {
       )}
     </div>
   )
-                      }
+}
