@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 
 interface Settings {
-  default_model: string; auto_publish: boolean; daily_limit: number;
+  default_model: string; auto_publish: boolean;
   notification_email: string; timezone: string;
 }
 
@@ -17,7 +17,6 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     default_model: 'gemini-2.0-flash',
     auto_publish: false,
-    daily_limit: 5,
     notification_email: '',
     timezone: 'Europe/Istanbul',
   })
@@ -114,12 +113,6 @@ export default function SettingsPage() {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               {MODELS.map(m => <option key={m}>{m}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Günlük Video Limiti</label>
-            <input type="number" min={1} max={50} value={settings.daily_limit}
-              onChange={e => setSettings(s => ({ ...s, daily_limit: +e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="flex items-center justify-between">
             <div>
