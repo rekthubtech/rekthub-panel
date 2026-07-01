@@ -31,6 +31,15 @@ const STATUS_COLORS: Record<string, string> = {
   testing: 'bg-purple-500/20 text-purple-300',
 }
 
+const ATLAS_MODELS = [
+  { id: 'alibaba/wan-2.6/text-to-video', label: 'Wan 2.6 (Varsayilan)' },
+  { id: 'alibaba/wan-2.7/text-to-video', label: 'Wan 2.7 (Yeni)' },
+  { id: 'kling-v2.0', label: 'Kling 2.0' },
+  { id: 'bytedance/seedance-2.0/text-to-video', label: 'Seedance 2.0' },
+  { id: 'google/veo3.1-fast/text-to-video', label: 'Veo 3.1 Fast' },
+  { id: 'google/veo3.1/text-to-video', label: 'Veo 3.1 (Yuksek Kalite)' },
+]
+
 export default function ConceptsPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
@@ -43,6 +52,8 @@ export default function ConceptsPage() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '' })
   const [testing, setTesting] = useState(false)
+  const [testModel, setTestModel] = useState('alibaba/wan-2.6/text-to-video')
+  const [resendLoading, setResendLoading] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; video_url?: string } | null>(null)
 
   useEffect(() => { fetchData() }, [])
@@ -68,6 +79,7 @@ export default function ConceptsPage() {
       channel_id: s.channel_id || '',
       status: s.status,
     })
+    setTestModel('alibaba/wan-2.6/text-to-video')
     setTestResult(null)
   }
 
@@ -115,7 +127,7 @@ export default function ConceptsPage() {
     try {
       const result = await api.post<{ success: boolean; video_url?: string; telegram_sent?: boolean; error?: string }>(
         `/concepts/suggestions/${selected.id}/test`,
-        {}
+        { model: testModel }
       )
       if (result.success) {
         setTestResult({
@@ -133,6 +145,27 @@ export default function ConceptsPage() {
       setTestResult({ success: false, message: msg })
     } finally {
       setTesting(false)
+    }
+  }
+
+  async function handleResend() {
+    if (!selected || !testResult?.video_url || resendLoading) return
+    setResendLoading(true)
+    try {
+      const result = await api.post<{ success: boolean; error?: string }>(
+        `/concepts/suggestions/${selected.id}/resend`,
+        { video_url: testResult.video_url }
+      )
+      if (result.success) {
+        alert("Telegram'a gönderildi!")
+      } else {
+        alert('Hata: ' + (result.error || 'Bilinmeyen hata'))
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Baglanti hatasi'
+      alert(msg)
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -315,6 +348,17 @@ export default function ConceptsPage() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
 
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Test Modeli</label>
+                <select value={testModel}
+                  onChange={e => setTestModel(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {ATLAS_MODELS.map(m => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Test result feedback */}
               {testing && (
                 <div className="flex items-center gap-3 bg-purple-900/30 border border-purple-700/50 rounded-lg px-4 py-3">
@@ -334,10 +378,18 @@ export default function ConceptsPage() {
                     {testResult.success ? '✓' : '✗'} {testResult.message}
                   </p>
                   {testResult.video_url && (
-                    <a href={testResult.video_url} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-green-400 hover:underline mt-1 block break-all">
-                      {testResult.video_url}
-                    </a>
+                    <>
+                      <a href={testResult.video_url} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-green-400 hover:underline mt-1 block break-all">
+                        {testResult.video_url}
+                      </a>
+                      <button
+                        onClick={handleResend}
+                        disabled={resendLoading}
+                        className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded-lg disabled:opacity-50 transition-colors">
+                        {resendLoading ? 'Gönderiliyor...' : "📤 Telegram'a Tekrar Gönder"}
+                      </button>
+                    </>
                   )}
                 </div>
               )}
