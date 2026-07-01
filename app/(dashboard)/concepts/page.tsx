@@ -31,13 +31,98 @@ const STATUS_COLORS: Record<string, string> = {
   testing: 'bg-purple-500/20 text-purple-300',
 }
 
-const ATLAS_MODELS = [
-  { id: 'alibaba/wan-2.6/text-to-video', label: 'Wan 2.6 (Varsayilan)' },
-  { id: 'alibaba/wan-2.7/text-to-video', label: 'Wan 2.7 (Yeni)' },
-  { id: 'kling-v2.0', label: 'Kling 2.0' },
-  { id: 'bytedance/seedance-2.0/text-to-video', label: 'Seedance 2.0' },
-  { id: 'google/veo3.1-fast/text-to-video', label: 'Veo 3.1 Fast' },
-  { id: 'google/veo3.1/text-to-video', label: 'Veo 3.1 (Yuksek Kalite)' },
+const ATLAS_MODEL_GROUPS = [
+  {
+    label: 'Kling (Kwaivgi)',
+    models: [
+      { id: 'kwaivgi/kling-v3.0-turbo/text-to-video', label: 'Kling V3.0 Turbo' },
+      { id: 'kwaivgi/kling-v3.0-4k/text-to-video', label: 'Kling V3.0 4K' },
+      { id: 'kwaivgi/kling-v3.0-pro/text-to-video', label: 'Kling V3.0 Pro' },
+      { id: 'kwaivgi/kling-v3.0-std/text-to-video', label: 'Kling V3.0 Standard' },
+      { id: 'kwaivgi/kling-video-o3-4k/text-to-video', label: 'Kling O3 4K' },
+      { id: 'kwaivgi/kling-video-o3-pro/text-to-video', label: 'Kling O3 Pro' },
+      { id: 'kwaivgi/kling-video-o3-std/text-to-video', label: 'Kling O3 Standard' },
+      { id: 'kwaivgi/kling-video-o1/text-to-video', label: 'Kling O1' },
+      { id: 'kwaivgi/kling-v2.6-pro/text-to-video', label: 'Kling V2.6 Pro' },
+      { id: 'kwaivgi/kling-v2.5-turbo-pro/text-to-video', label: 'Kling V2.5 Turbo Pro' },
+      { id: 'kwaivgi/kling-v2.1-t2v-master', label: 'Kling V2.1 Master' },
+      { id: 'kwaivgi/kling-v2.0-t2v-master', label: 'Kling V2.0 Master' },
+      { id: 'kwaivgi/kling-v1.6-t2v-standard', label: 'Kling V1.6 Standard' },
+    ],
+  },
+  {
+    label: 'Seedance (ByteDance)',
+    models: [
+      { id: 'bytedance/seedance-2.0/text-to-video', label: 'Seedance 2.0' },
+      { id: 'bytedance/seedance-2.0-fast/text-to-video', label: 'Seedance 2.0 Fast' },
+      { id: 'bytedance/seedance-2.0-mini/text-to-video', label: 'Seedance 2.0 Mini' },
+      { id: 'bytedance/seedance-v1.5-pro/text-to-video', label: 'Seedance V1.5 Pro' },
+      { id: 'bytedance/seedance-v1.5-pro/text-to-video-fast', label: 'Seedance V1.5 Pro Fast' },
+      { id: 'bytedance/seedance-v1-pro-fast/text-to-video', label: 'Seedance V1 Pro Fast' },
+      { id: 'bytedance/seedance-v1-pro-t2v-1080p', label: 'Seedance V1 Pro 1080p' },
+      { id: 'bytedance/seedance-v1-pro-t2v-720p', label: 'Seedance V1 Pro 720p' },
+      { id: 'bytedance/seedance-v1-pro-t2v-480p', label: 'Seedance V1 Pro 480p' },
+    ],
+  },
+  {
+    label: 'Wan / HappyHorse (Alibaba)',
+    models: [
+      { id: 'alibaba/wan-2.6/text-to-video', label: 'Wan 2.6 (Varsayilan)' },
+      { id: 'alibaba/wan-2.7/text-to-video', label: 'Wan 2.7' },
+      { id: 'alibaba/wan-2.5/text-to-video', label: 'Wan 2.5' },
+      { id: 'alibaba/wan-2.5/text-to-video-fast', label: 'Wan 2.5 Fast' },
+      { id: 'alibaba/wan-2.5/video-extend', label: 'Wan 2.5 Video Extend' },
+      { id: 'alibaba/happyhorse-1.1/text-to-video', label: 'HappyHorse 1.1' },
+      { id: 'alibaba/happyhorse-1.0/text-to-video', label: 'HappyHorse 1.0' },
+    ],
+  },
+  {
+    label: 'Veo / Gemini (Google)',
+    models: [
+      { id: 'google/veo3.1/text-to-video', label: 'Veo 3.1 (Yuksek Kalite)' },
+      { id: 'google/veo3.1-fast/text-to-video', label: 'Veo 3.1 Fast' },
+      { id: 'google/veo3.1-lite/text-to-video', label: 'Veo 3.1 Lite' },
+      { id: 'google/gemini-omni-flash/text-to-video-developer', label: 'Gemini Omni Flash' },
+    ],
+  },
+  {
+    label: 'Vidu',
+    models: [
+      { id: 'vidu/q1/text-to-video', label: 'Vidu Q1' },
+      { id: 'vidu/q2/text-to-video', label: 'Vidu Q2' },
+      { id: 'vidu/q3-pro/text-to-video', label: 'Vidu Q3 Pro' },
+      { id: 'vidu/q3-turbo/text-to-video', label: 'Vidu Q3 Turbo' },
+    ],
+  },
+  {
+    label: 'Hailuo (Minimax)',
+    models: [
+      { id: 'minimax/hailuo-02/t2v-standard', label: 'Hailuo 02 Standard' },
+      { id: 'minimax/hailuo-02/t2v-pro', label: 'Hailuo 02 Pro' },
+      { id: 'minimax/hailuo-2.3/t2v-standard', label: 'Hailuo 2.3 Standard' },
+      { id: 'minimax/hailuo-2.3/t2v-pro', label: 'Hailuo 2.3 Pro' },
+    ],
+  },
+  {
+    label: 'Pixverse',
+    models: [
+      { id: 'pixverse/v6/text-to-video', label: 'Pixverse V6' },
+      { id: 'pixverse/c1/text-to-video', label: 'Pixverse C1' },
+    ],
+  },
+  {
+    label: 'Van (Atlas Cloud)',
+    models: [
+      { id: 'atlascloud/van-2.6/text-to-video', label: 'Van 2.6' },
+      { id: 'atlascloud/van-2.5/text-to-video', label: 'Van 2.5' },
+    ],
+  },
+  {
+    label: 'Diger',
+    models: [
+      { id: 'xai/grok-imagine-video/text-to-video', label: 'Grok Imagine Video' },
+    ],
+  },
 ]
 
 export default function ConceptsPage() {
@@ -353,8 +438,12 @@ export default function ConceptsPage() {
                 <select value={testModel}
                   onChange={e => setTestModel(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {ATLAS_MODELS.map(m => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
+                  {ATLAS_MODEL_GROUPS.map(group => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.models.map(m => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
