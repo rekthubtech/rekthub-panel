@@ -1,12 +1,13 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { clearToken } from '@/lib/api'
+import { clearToken }, api from '@/lib/api'
 
 const NAV = [
   { href: '/channels', label: 'Kanallar' },
   { href: '/concepts', label: 'Konseptler' },
   { href: '/analytics', label: 'Analitik' },
+  { href: '/user-logs', label: 'Kullanıcı Logları' },
   { href: '/settings', label: 'Ayarlar' },
 ]
 
@@ -14,9 +15,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const router = useRouter()
 
-  const logout = () => {
-    clearToken()
-    router.push('/login')
+  const logout = async () => {
+      try {
+            await api.post('/auth/logout', {})
+      } catch {}
+      clearToken()
+      router.push('/login')
   }
 
   return (
