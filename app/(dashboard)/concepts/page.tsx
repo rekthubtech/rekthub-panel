@@ -125,6 +125,22 @@ const ATLAS_MODEL_GROUPS = [
   },
 ]
 
+const ASPECT_RATIO_OPTIONS = [
+  { id: '', label: 'Model Varsayilani' },
+  { id: '16:9', label: '16:9 (Yatay)' },
+  { id: '9:16', label: '9:16 (Dikey / Shorts)' },
+  { id: '1:1', label: '1:1 (Kare)' },
+  { id: '4:3', label: '4:3' },
+  { id: '3:4', label: '3:4' },
+]
+
+const RESOLUTION_OPTIONS = [
+  { id: '', label: 'Model Varsayilani' },
+  { id: '720p', label: '720p' },
+  { id: '1080p', label: '1080p' },
+  { id: '4k', label: '4K' },
+]
+
 export default function ConceptsPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
@@ -138,6 +154,9 @@ export default function ConceptsPage() {
   const [form, setForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '' })
   const [testing, setTesting] = useState(false)
   const [testModel, setTestModel] = useState('alibaba/wan-2.6/text-to-video')
+  const [testDuration, setTestDuration] = useState(5)
+  const [testAspectRatio, setTestAspectRatio] = useState('')
+  const [testResolution, setTestResolution] = useState('')
   const [resendLoading, setResendLoading] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; video_url?: string } | null>(null)
 
@@ -165,6 +184,9 @@ export default function ConceptsPage() {
       status: s.status,
     })
     setTestModel('alibaba/wan-2.6/text-to-video')
+    setTestDuration(5)
+    setTestAspectRatio('')
+    setTestResolution('')
     setTestResult(null)
   }
 
@@ -210,9 +232,12 @@ export default function ConceptsPage() {
     setTesting(true)
     setTestResult(null)
     try {
+      const body: Record<string, unknown> = { model: testModel, duration_seconds: testDuration }
+      if (testAspectRatio) body.aspect_ratio = testAspectRatio
+      if (testResolution) body.resolution = testResolution
       const result = await api.post<{ success: boolean; video_url?: string; telegram_sent?: boolean; error?: string }>(
         `/concepts/suggestions/${selected.id}/test`,
-        { model: testModel }
+        body
       )
       if (result.success) {
         setTestResult({
@@ -385,7 +410,7 @@ export default function ConceptsPage() {
 
       {selected && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-2xl shadow-2xl">
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-gray-800">
               <h3 className="font-bold text-lg text-white">Konsept Duzenle</h3>
               <button onClick={closeDetail} className="text-gray-500 hover:text-white text-xl leading-none">✕</button>
@@ -433,19 +458,47 @@ export default function ConceptsPage() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
 
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Test Modeli</label>
-                <select value={testModel}
-                  onChange={e => setTestModel(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {ATLAS_MODEL_GROUPS.map(group => (
-                    <optgroup key={group.label} label={group.label}>
-                      {group.models.map(m => (
-                        <option key={m.id} value={m.id}>{m.label}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+              <div className="border-t border-gray-800 pt-4">
+                <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wide">Test Ayarlari</p>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Test Modeli</label>
+                  <select value={testModel}
+                    onChange={e => setTestModel(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    {ATLAS_MODEL_GROUPS.map(group => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.models.map(m => (
+                          <option key={m.id} value={m.id}>{m.label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mt-3">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Sure (sn)</label>
+                    <input type="number" min={1} max={120} value={testDuration}
+                      onChange={e => setTestDuration(Number(e.target.value) || 5)}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Format (En:Boy)</label>
+                    <select value={testAspectRatio}
+                      onChange={e => setTestAspectRatio(e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {ASPECT_RATIO_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Kalite</label>
+                    <select value={testResolution}
+                      onChange={e => setTestResolution(e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {RESOLUTION_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-600 mt-2">Not: Bazi modeller belirli sure/kalite kombinasyonlarini desteklemeyebilir (orn. bazi Veo modelleri 1080p/4K icin sadece 8 sn kabul eder). Boyle durumda hata mesaji gosterilir.</p>
               </div>
 
               {/* Test result feedback */}
