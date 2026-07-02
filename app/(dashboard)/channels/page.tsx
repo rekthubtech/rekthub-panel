@@ -112,9 +112,21 @@ const MODEL_GROUPS = [
   },
 ]
 
+const FORMAT_OPTIONS = [
+  { id: 'shorts', label: 'Shorts' },
+  { id: 'long', label: 'Uzun Video' },
+]
+
+interface ScheduleSlot {
+  id: number
+  format: string
+  publish_time: string
+  is_active: boolean
+}
+
 interface Channel {
   id: number; name: string; youtube_channel_id: string;
-  status: string; default_model: string; schedule_slots: string[];
+  status: string; default_model: string; schedule_slots?: ScheduleSlot[];
 }
 
 export default function ChannelsPage() {
@@ -122,7 +134,9 @@ export default function ChannelsPage() {
   const [loading, setLoading] = useState(true)
   const [editingModel, setEditingModel] = useState<number | null>(null)
   const [showSlots, setShowSlots] = useState<number | null>(null)
+  const [slotsLoading, setSlotsLoading] = useState(false)
   const [newSlot, setNewSlot] = useState('')
+  const [newFormat, setNewFormat] = useState('shorts')
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
 
   useEffect(() => { fetchChannels() }, [])
@@ -145,18 +159,36 @@ export default function ChannelsPage() {
     setEditingModel(null)
   }
 
+  async function toggleSlots(ch: Channel) {
+    if (showSlots === ch.id) { setShowSlots(null); return }
+    setShowSlots(ch.id)
+    setNewSlot('')
+    setNewFormat('shorts')
+    setSlotsLoading(true)
+    try {
+      const slots = await api.get<ScheduleSlot[]>(`/channels/${ch.id}/schedule-slots`)
+      setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, schedule_slots: slots } : c))
+    } catch (e) {
+      // sessiz geç, boş liste olarak kalsın
+    } finally {
+      setSlotsLoading(false)
+    }
+  }
+
   async function addSlot(ch: Channel) {
     if (!newSlot.match(/^\d{2}:\d{2}$/)) return
-    const slots = [...(ch.schedule_slots || []), newSlot]
-    await api.patch(`/channels/${ch.id}`, { schedule_slots: slots })
-    setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, schedule_slots: slots } : c))
+    const created = await api.post<ScheduleSlot>(`/channels/${ch.id}/schedule-slots`, {
+      format: newFormat,
+      publish_time: newSlot,
+      is_active: true,
+    })
+    setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, schedule_slots: [...(c.schedule_slots || []), created] } : c))
     setNewSlot('')
   }
 
-  async function removeSlot(ch: Channel, slot: string) {
-    const slots = ch.schedule_slots.filter(s => s !== slot)
-    await api.patch(`/channels/${ch.id}`, { schedule_slots: slots })
-    setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, schedule_slots: slots } : c))
+  async function removeSlot(ch: Channel, slot: ScheduleSlot) {
+    await api.delete(`/channels/${ch.id}/schedule-slots/${slot.id}`)
+    setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, schedule_slots: (c.schedule_slots || []).filter(s => s.id !== slot.id) } : c))
   }
 
   async function deleteChannel(id: number) {
@@ -222,25 +254,39 @@ export default function ChannelsPage() {
                         </button>
                       )}
                     </div>
-                    <button onClick={() => setShowSlots(showSlots === ch.id ? null : ch.id)} className="text-xs text-gray-500 hover:text-gray-300">
-                      Zamanlama ({ch.schedule_slots?.length || 0} slot)
+                    <button onClick={() => toggleSlots(ch)} className="text-xs text-gray-500 hover:text-gray-300">
+                      Zamanlama ({ch.schedule_slots?.length ?? 0} slot)
                     </button>
                   </div>
                   {showSlots === ch.id && (
                     <div className="mt-3 p-3 bg-gray-900 rounded-lg">
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {(ch.schedule_slots || []).map(slot => (
-                          <span key={slot} className="text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded px-2 py-1 flex items-center gap-1">
-                            {slot}
-                            <button onClick={() => removeSlot(ch, slot)} className="text-red-400 hover:text-red-300 ml-1">×</button>
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
+                      {slotsLoading ? (
+                        <p className="text-xs text-gray-500 mb-2">Yükleniyor…</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {(ch.schedule_slots || []).length === 0 && (
+                            <span className="text-xs text-gray-500">Henüz slot yok.</span>
+                          )}
+                          {(ch.schedule_slots || []).map(slot => (
+                            <span key={slot.id} className="text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded px-2 py-1 flex items-center gap-1">
+                              {slot.publish_time} UTC · {FORMAT_OPTIONS.find(f => f.id === slot.format)?.label || slot.format}
+                              <button onClick={() => removeSlot(ch, slot)} className="text-red-400 hover:text-red-300 ml-1">×</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2 items-center flex-wrap">
                         <input type="time" value={newSlot} onChange={e => setNewSlot(e.target.value)}
                           className="text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1" />
+                        <select value={newFormat} onChange={e => setNewFormat(e.target.value)}
+                          className="text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1">
+                          {FORMAT_OPTIONS.map(f => (
+                            <option key={f.id} value={f.id}>{f.label}</option>
+                          ))}
+                        </select>
                         <button onClick={() => addSlot(ch)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Ekle</button>
                       </div>
+                      <p className="text-[10px] text-gray-600 mt-2">Saatler UTC olarak kaydedilir.</p>
                     </div>
                   )}
                 </div>
