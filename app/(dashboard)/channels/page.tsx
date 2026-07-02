@@ -117,6 +117,22 @@ const FORMAT_OPTIONS = [
   { id: 'long', label: 'Uzun Video' },
 ]
 
+const ASPECT_RATIO_OPTIONS = [
+  { id: '', label: 'Varsayılan' },
+  { id: '16:9', label: '16:9 (Yatay)' },
+  { id: '9:16', label: '9:16 (Dikey / Shorts)' },
+  { id: '1:1', label: '1:1 (Kare)' },
+  { id: '4:3', label: '4:3' },
+  { id: '3:4', label: '3:4' },
+]
+
+const RESOLUTION_OPTIONS = [
+  { id: '', label: 'Varsayılan' },
+  { id: '720p', label: '720p' },
+  { id: '1080p', label: '1080p' },
+  { id: '4k', label: '4K' },
+]
+
 interface ScheduleSlot {
   id: number
   format: string
@@ -124,9 +140,24 @@ interface ScheduleSlot {
   is_active: boolean
 }
 
+interface VideoSettings {
+  duration?: number
+  aspect_ratio?: string
+  resolution?: string
+}
+
+interface Branding {
+  logo_url?: string
+  primary_color?: string
+  secondary_color?: string
+  font?: string
+  video_settings?: VideoSettings
+}
+
 interface Channel {
   id: number; name: string; youtube_channel_id: string;
   status: string; default_model: string; schedule_slots?: ScheduleSlot[];
+  branding?: Branding | null;
 }
 
 export default function ChannelsPage() {
@@ -138,6 +169,11 @@ export default function ChannelsPage() {
   const [newSlot, setNewSlot] = useState('')
   const [newFormat, setNewFormat] = useState('shorts')
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [showVideoSettings, setShowVideoSettings] = useState<number | null>(null)
+  const [vsDuration, setVsDuration] = useState(5)
+  const [vsAspectRatio, setVsAspectRatio] = useState('')
+  const [vsResolution, setVsResolution] = useState('')
+  const [vsSaving, setVsSaving] = useState(false)
 
   useEffect(() => { fetchChannels() }, [])
 
@@ -197,6 +233,30 @@ export default function ChannelsPage() {
     setDeleteConfirm(null)
   }
 
+  function toggleVideoSettings(ch: Channel) {
+    if (showVideoSettings === ch.id) { setShowVideoSettings(null); return }
+    setShowVideoSettings(ch.id)
+    const vs = (ch.branding && ch.branding.video_settings) || {}
+    setVsDuration(vs.duration || 5)
+    setVsAspectRatio(vs.aspect_ratio || '')
+    setVsResolution(vs.resolution || '')
+  }
+
+  async function saveVideoSettings(ch: Channel) {
+    setVsSaving(true)
+    try {
+      const video_settings: VideoSettings = { duration: vsDuration }
+      if (vsAspectRatio) video_settings.aspect_ratio = vsAspectRatio
+      if (vsResolution) video_settings.resolution = vsResolution
+      const newBranding: Branding = { ...(ch.branding || {}), video_settings }
+      await api.patch(`/channels/${ch.id}`, { branding: newBranding })
+      setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, branding: newBranding } : c))
+      setShowVideoSettings(null)
+    } finally {
+      setVsSaving(false)
+    }
+  }
+
   function startOAuth() {
     window.location.href = `${NEXT_PUBLIC_API_URL}/auth/youtube`
   }
@@ -221,7 +281,9 @@ export default function ChannelsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {channels.map(ch => (
+          {channels.map(ch => {
+            const vs = (ch.branding && ch.branding.video_settings) || {}
+            return (
             <div key={ch.id} className="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-sm">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
@@ -257,6 +319,9 @@ export default function ChannelsPage() {
                     <button onClick={() => toggleSlots(ch)} className="text-xs text-gray-500 hover:text-gray-300">
                       Zamanlama ({ch.schedule_slots?.length ?? 0} slot)
                     </button>
+                    <button onClick={() => toggleVideoSettings(ch)} className="text-xs text-gray-500 hover:text-gray-300">
+                      Video Ayarları ({vs.duration || 5}sn · {vs.aspect_ratio || 'varsayılan'} · {vs.resolution || 'varsayılan'})
+                    </button>
                   </div>
                   {showSlots === ch.id && (
                     <div className="mt-3 p-3 bg-gray-900 rounded-lg">
@@ -289,6 +354,40 @@ export default function ChannelsPage() {
                       <p className="text-[10px] text-gray-600 mt-2">Saatler UTC olarak kaydedilir.</p>
                     </div>
                   )}
+                  {showVideoSettings === ch.id && (
+                    <div className="mt-3 p-3 bg-gray-900 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-2">Bu kanal için otomatik üretilecek videoların varsayılan süre/format/kalite ayarları. Zamanlanmış tüm paylaşımlarda kullanılır.</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[10px] text-gray-500 block mb-1">Süre (sn)</label>
+                          <input type="number" min={1} max={120} value={vsDuration}
+                            onChange={e => setVsDuration(Number(e.target.value) || 5)}
+                            className="w-full text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 block mb-1">Format</label>
+                          <select value={vsAspectRatio} onChange={e => setVsAspectRatio(e.target.value)}
+                            className="w-full text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1">
+                            {ASPECT_RATIO_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 block mb-1">Kalite</label>
+                          <select value={vsResolution} onChange={e => setVsResolution(e.target.value)}
+                            className="w-full text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1">
+                            {RESOLUTION_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex justify-end mt-2">
+                        <button onClick={() => saveVideoSettings(ch)} disabled={vsSaving}
+                          className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50">
+                          {vsSaving ? 'Kaydediliyor…' : 'Kaydet'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-gray-600 mt-2">Not: Shorts için 9:16 önerilir. Bazı modeller belirli süre/kalite kombinasyonlarını desteklemeyebilir.</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                   <button onClick={() => toggleStatus(ch)}
@@ -299,7 +398,8 @@ export default function ChannelsPage() {
                 </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
