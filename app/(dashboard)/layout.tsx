@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { clearToken }, api from '@/lib/api'
+import { clearToken, api } from '@/lib/api'
 
 const NAV = [
   { href: '/channels', label: 'Kanallar' },
