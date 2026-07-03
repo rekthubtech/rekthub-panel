@@ -156,12 +156,24 @@ export default function ConceptsPage() {
         ? suggestions.filter(s => s.status === 'approved' && !s.used)
         : suggestions.filter(s => s.status === filter)
 
+  const counts: Record<string, number> = {
+    all: suggestions.length,
+    pending: suggestions.filter(s => s.status === 'pending').length,
+    approved: suggestions.filter(s => s.status === 'approved' && !s.used).length,
+    rejected: suggestions.filter(s => s.status === 'rejected').length,
+    testing: suggestions.filter(s => s.status === 'testing').length,
+    used: suggestions.filter(s => s.used).length,
+  }
+
   if (loading) return <div className="p-8 text-center text-gray-400">Yukleniyor...</div>
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-white">Konseptler</h2>
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-2xl font-bold text-white">Konseptler</h2>
+          <span className="text-sm text-gray-500">Toplam: {counts.all}</span>
+        </div>
         <button onClick={() => setShowForm(!showForm)}
           className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
           + Yeni Konsept
@@ -181,7 +193,7 @@ export default function ConceptsPage() {
           {statuses.map(s => (
             <button key={s} onClick={() => setFilter(s)}
               className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === s ? (s === 'used' ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white') : 'bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700'}`}>
-              {s === 'all' ? 'Tumu' : s === 'used' ? 'Kullanildi' : STATUS_LABEL[s]}
+              {(s === 'all' ? 'Tumu' : s === 'used' ? 'Kullanildi' : STATUS_LABEL[s])} ({counts[s]})
             </button>
           ))}
         </div>
