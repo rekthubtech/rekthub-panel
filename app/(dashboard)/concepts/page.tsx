@@ -147,8 +147,14 @@ export default function ConceptsPage() {
   const channelName = (id: string | null) =>
     id ? (channels.find(c => c.id === id)?.name || id) : 'Genel'
 
-  const statuses = ['all', 'pending', 'approved', 'rejected', 'testing']
-  const filtered = filter === 'all' ? suggestions : suggestions.filter(s => s.status === filter)
+  const statuses = ['all', 'pending', 'approved', 'rejected', 'testing', 'used']
+  const filtered = filter === 'all'
+    ? suggestions
+    : filter === 'used'
+      ? suggestions.filter(s => s.used)
+      : filter === 'approved'
+        ? suggestions.filter(s => s.status === 'approved' && !s.used)
+        : suggestions.filter(s => s.status === filter)
 
   if (loading) return <div className="p-8 text-center text-gray-400">Yukleniyor...</div>
 
@@ -174,8 +180,8 @@ export default function ConceptsPage() {
         <div className="flex gap-2">
           {statuses.map(s => (
             <button key={s} onClick={() => setFilter(s)}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === s ? 'bg-blue-600 text-white' : 'bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700'}`}>
-              {s === 'all' ? 'Tumu' : STATUS_LABEL[s]}
+              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === s ? (s === 'used' ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white') : 'bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700'}`}>
+              {s === 'all' ? 'Tumu' : s === 'used' ? 'Kullanildi' : STATUS_LABEL[s]}
             </button>
           ))}
         </div>
