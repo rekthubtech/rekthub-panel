@@ -13,6 +13,15 @@ interface AtlasBalance {
 
 interface VideoRow {
   id: number; title: string; channel_name: string; status: string; published_at: string;
+  cost_usd?: number | null;
+}
+
+interface VideoCostMonth {
+  month: string; total_usd: number; video_count: number;
+}
+
+interface VideoCostSummary {
+  total_usd: number | null; video_count: number; monthly: VideoCostMonth[];
 }
 
 interface ChannelCost {
@@ -45,10 +54,14 @@ const fmtAmount = (n: number, currency?: string) => {
 
 const fmt = (n: number) => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+const fmtUsd = (n: number | null | undefined, digits = 2) =>
+  n != null ? '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '—'
+
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [atlasBalance, setAtlasBalance] = useState<AtlasBalance | null>(null)
   const [recent, setRecent] = useState<VideoRow[]>([])
+  const [videoCosts, setVideoCosts] = useState<VideoCostSummary | null>(null)
   const [channelCosts, setChannelCosts] = useState<ChannelCost[]>([])
   const [manualExpenses, setManualExpenses] = useState<ManualExpense[]>([])
   const [channels, setChannels] = useState<{ id: string; name: string }[]>([])
@@ -66,10 +79,11 @@ export default function AnalyticsPage() {
   async function fetchData() {
     setLoading(true)
     try {
-      const [s, ab, v, summary, manual, ch] = await Promise.all([
+      const [s, ab, v, vc, summary, manual, ch] = await Promise.all([
         api.get<Stats>('/analytics/summary'),
         api.get<AtlasBalance>('/analytics/atlas-balance').catch(() => null),
         api.get<VideoRow[]>('/analytics/recent-videos'),
+        api.get<VideoCostSummary>('/analytics/video-costs').catch(() => null),
         api.get<any>('/costs/summary').catch(() => null),
         api.get<ManualExpense[]>('/costs/manual').catch(() => []),
         api.get<any[]>('/channels').catch(() => []),
@@ -77,6 +91,7 @@ export default function AnalyticsPage() {
       setStats(s)
       setAtlasBalance(ab)
       setRecent(v)
+      setVideoCosts(vc)
       if (summary?.channels) setChannelCosts(summary.channels)
       setManualExpenses(manual || [])
       setChannels((ch || []).map((c: any) => ({ id: c.id, name: c.name || c.channel_name || c.id })))
@@ -177,14 +192,54 @@ export default function AnalyticsPage() {
                       {v.channel_name} · {v.published_at ? new Date(v.published_at).toLocaleDateString('tr-TR') : '—'}
                     </p>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[v.status] || 'bg-gray-700 text-gray-400'}`}>
-                    {statusLabel[v.status] || v.status}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400">{fmtUsd(v.cost_usd, 3)}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[v.status] || 'bg-gray-700 text-gray-400'}`}>
+                      {statusLabel[v.status] || v.status}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+
+        {/* VİDEO ÜRETİM MALİYETİ */}
+        {videoCosts && (
+          <div className="bg-gray-900 rounded-xl border border-gray-800">
+            <div className="p-5 border-b border-gray-800 flex items-center justify-between flex-wrap gap-2">
+              <h3 className="font-semibold text-white">Video Üretim Maliyeti</h3>
+              <span className="text-sm text-gray-400">
+                Toplam: <span className="text-white font-semibold">{fmtUsd(videoCosts.total_usd)}</span>
+                {' '}<span className="text-gray-500">({videoCosts.video_count} video)</span>
+              </span>
+            </div>
+            {videoCosts.monthly.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 text-sm">Henüz maliyet verisi yok.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-800/50">
+                    <tr>
+                      <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Ay</th>
+                      <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Video Sayısı</th>
+                      <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Toplam Maliyet</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {videoCosts.monthly.slice().reverse().map(m => (
+                      <tr key={m.month}>
+                        <td className="px-5 py-3 font-medium text-white">{m.month}</td>
+                        <td className="px-5 py-3 text-right text-gray-400">{m.video_count}</td>
+                        <td className="px-5 py-3 text-right font-semibold text-red-400">{fmtUsd(m.total_usd, 4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* MALİYET */}
