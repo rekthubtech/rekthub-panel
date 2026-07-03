@@ -247,7 +247,7 @@ export default function AnalyticsPage() {
                       <tr key={m.month}>
                         <td className="px-5 py-3 font-medium text-white">{m.month}</td>
                         <td className="px-5 py-3 text-right text-gray-400">{m.video_count}</td>
-                        <td className="px-5 py-3 text-right font-semibold text-red-400">{fmtUsd(m.total_usd, 4)}</td>
+                        <td className="px-5 py-3 text-right font-semibold text-red-400">{fmtUsd(m.total_usd, 2)}</td>
                       </tr>
                     ))}
                   </tbody>
