@@ -7,6 +7,10 @@ interface Stats {
   active_channels: number; total_channels: number;
 }
 
+interface AtlasBalance {
+  balance_usd: number | null; currency: string; error?: string;
+}
+
 interface VideoRow {
   id: number; title: string; channel_name: string; status: string; published_at: string;
 }
@@ -43,6 +47,7 @@ const fmt = (n: number) => '₺' + Number(n || 0).toLocaleString('tr-TR', { mini
 
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
+  const [atlasBalance, setAtlasBalance] = useState<AtlasBalance | null>(null)
   const [recent, setRecent] = useState<VideoRow[]>([])
   const [channelCosts, setChannelCosts] = useState<ChannelCost[]>([])
   const [manualExpenses, setManualExpenses] = useState<ManualExpense[]>([])
@@ -61,14 +66,16 @@ export default function AnalyticsPage() {
   async function fetchData() {
     setLoading(true)
     try {
-      const [s, v, summary, manual, ch] = await Promise.all([
+      const [s, ab, v, summary, manual, ch] = await Promise.all([
         api.get<Stats>('/analytics/summary'),
+        api.get<AtlasBalance>('/analytics/atlas-balance').catch(() => null),
         api.get<VideoRow[]>('/analytics/recent-videos'),
         api.get<any>('/costs/summary').catch(() => null),
         api.get<ManualExpense[]>('/costs/manual').catch(() => []),
         api.get<any[]>('/channels').catch(() => []),
       ])
       setStats(s)
+      setAtlasBalance(ab)
       setRecent(v)
       if (summary?.channels) setChannelCosts(summary.channels)
       setManualExpenses(manual || [])
@@ -121,6 +128,10 @@ export default function AnalyticsPage() {
 
   if (loading) return <div className="p-8 text-center text-gray-400">Yükleniyor…</div>
 
+  const atlasBalanceLabel = atlasBalance && atlasBalance.balance_usd !== null && atlasBalance.balance_usd !== undefined
+    ? '$' + Number(atlasBalance.balance_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '—'
+
   return (
     <div className="p-6 space-y-8">
 
@@ -129,7 +140,7 @@ export default function AnalyticsPage() {
         <h2 className="text-2xl font-bold text-white">Analitik</h2>
 
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
               { label: 'Toplam Video', value: stats.total_videos },
               { label: 'Bugün Yayınlanan', value: stats.published_today },
@@ -141,6 +152,12 @@ export default function AnalyticsPage() {
                 <p className="text-2xl font-bold text-white">{value}</p>
               </div>
             ))}
+            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+              <p className="text-xs text-gray-400 mb-1">Atlas Cloud Bakiyesi</p>
+              <p className={`text-2xl font-bold ${atlasBalance?.balance_usd !== null && atlasBalance?.balance_usd !== undefined ? 'text-green-400' : 'text-gray-500'}`}>
+                {atlasBalanceLabel}
+              </p>
+            </div>
           </div>
         )}
 
