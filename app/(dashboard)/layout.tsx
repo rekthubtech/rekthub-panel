@@ -6,6 +6,7 @@ import { clearToken, api } from '@/lib/api'
 const NAV = [
   { href: '/channels', label: 'Kanallar' },
   { href: '/concepts', label: 'Konseptler' },
+  { href: '/video-test', label: 'Video Test' },
   { href: '/analytics', label: 'Analitik' },
   { href: '/user-logs', label: 'Kullanıcı Logları' },
   { href: '/settings', label: 'Ayarlar' },
@@ -16,11 +17,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
 
   const logout = async () => {
-      try {
-            await api.post('/auth/logout', {})
-      } catch {}
-      clearToken()
-      router.push('/login')
+    try {
+      await api.post('/auth/logout', {})
+    } catch {}
+    clearToken()
+    router.push('/login')
   }
 
   return (
