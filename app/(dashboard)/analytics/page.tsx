@@ -13,7 +13,7 @@ interface AtlasBalance {
 
 interface VideoRow {
   id: number; title: string; channel_name: string; status: string; published_at: string;
-  cost_usd?: number | null;
+  cost_usd?: number | null; cost_estimated?: boolean;
 }
 
 interface VideoCostMonth {
@@ -21,7 +21,7 @@ interface VideoCostMonth {
 }
 
 interface VideoCostSummary {
-  total_usd: number | null; video_count: number; monthly: VideoCostMonth[];
+  total_usd: number | null; video_count: number; real_count?: number; monthly: VideoCostMonth[];
 }
 
 interface ChannelCost {
@@ -193,7 +193,16 @@ export default function AnalyticsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400">{fmtUsd(v.cost_usd, 3)}</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-xs text-gray-400">{fmtUsd(v.cost_usd, 3)}</span>
+                      {v.cost_usd != null && (
+                        v.cost_estimated === false ? (
+                          <span title="Atlas Cloud bakiye farkından ölçülen gerçek maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-300">gerçek</span>
+                        ) : (
+                          <span title="Model fiyatı × süre üzerinden tahmini maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300">tahmini</span>
+                        )
+                      )}
+                    </span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[v.status] || 'bg-gray-700 text-gray-400'}`}>
                       {statusLabel[v.status] || v.status}
                     </span>
@@ -209,9 +218,16 @@ export default function AnalyticsPage() {
           <div className="bg-gray-900 rounded-xl border border-gray-800">
             <div className="p-5 border-b border-gray-800 flex items-center justify-between flex-wrap gap-2">
               <h3 className="font-semibold text-white">Video Üretim Maliyeti</h3>
-              <span className="text-sm text-gray-400">
+              <span className="text-sm text-gray-400 text-right">
                 Toplam: <span className="text-white font-semibold">{fmtUsd(videoCosts.total_usd)}</span>
                 {' '}<span className="text-gray-500">({videoCosts.video_count} video)</span>
+                {typeof videoCosts.real_count === 'number' && (
+                  <span className="block text-xs text-gray-500 mt-0.5">
+                    <span className="text-green-400">{videoCosts.real_count} gerçek</span>
+                    {' · '}
+                    <span className="text-yellow-400">{videoCosts.video_count - videoCosts.real_count} tahmini</span>
+                  </span>
+                )}
               </span>
             </div>
             {videoCosts.monthly.length === 0 ? (
