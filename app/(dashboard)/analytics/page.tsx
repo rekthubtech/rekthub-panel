@@ -103,6 +103,15 @@ const IconSparkle = () => (
 const IconChevronDown = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0"><path d="m6 9 6 6 6-6"/></svg>
 )
+const IconArrowUp = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 shrink-0"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+)
+const IconArrowDown = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 shrink-0"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+)
+const IconArrowUpDown = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 shrink-0 opacity-50"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"/></svg>
+)
 
 function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
   if (totalPages <= 1) return null
@@ -146,6 +155,7 @@ export default function AnalyticsPage() {
   const [videosOpen, setVideosOpen] = useState(false)
   const [videosPage, setVideosPage] = useState(1)
   const [retentionPage, setRetentionPage] = useState(1)
+  const [retentionSortDir, setRetentionSortDir] = useState<'asc' | 'desc' | null>(null)
   const PAGE_SIZE = 10
   const [form, setForm] = useState({
     description: '', amount: '',
@@ -203,6 +213,11 @@ export default function AnalyticsPage() {
     fetchData()
   }
 
+  function toggleRetentionSort() {
+    setRetentionPage(1)
+    setRetentionSortDir(d => d === 'asc' ? 'desc' : 'asc')
+  }
+
   const currencyTotals = manualExpenses.reduce((acc, exp) => {
     const cur = exp.currency || 'TRY'
     acc[cur] = (acc[cur] || 0) + Number(exp.amount)
@@ -232,8 +247,11 @@ export default function AnalyticsPage() {
   const bytePlusSpend = bytePlusProvider ? bytePlusProvider.total_usd : null
   const bytePlusVideoCount = bytePlusProvider ? bytePlusProvider.video_count : 0
 
-  const retentionTotalPages = Math.max(1, Math.ceil(retention.length / PAGE_SIZE))
-  const retentionPageItems = retention.slice((retentionPage - 1) * PAGE_SIZE, retentionPage * PAGE_SIZE)
+  const sortedRetention = retentionSortDir
+    ? [...retention].sort((a, b) => retentionSortDir === 'asc' ? (Number(a.views || 0) - Number(b.views || 0)) : (Number(b.views || 0) - Number(a.views || 0)))
+    : retention
+  const retentionTotalPages = Math.max(1, Math.ceil(sortedRetention.length / PAGE_SIZE))
+  const retentionPageItems = sortedRetention.slice((retentionPage - 1) * PAGE_SIZE, retentionPage * PAGE_SIZE)
   const videosTotalPages = Math.max(1, Math.ceil(recent.length / PAGE_SIZE))
   const videosPageItems = recent.slice((videosPage - 1) * PAGE_SIZE, videosPage * PAGE_SIZE)
 
@@ -286,7 +304,7 @@ export default function AnalyticsPage() {
               <IconEye />
               <div>
                 <h3 className="font-semibold text-white">Video Performansı (İzlenme Süresi)</h3>
-                <p className="text-xs text-gray-500 mt-0.5">YouTube Analytics verisi; yeni yayınlanan videolarda 48-72 saat gecikmeli görünebilir.</p>
+                <p className="text-xs text-gray-500 mt-0.5">YouTube Analytics verisi; yeni yayınlanan videolarda 48-72 saat gecikmeli görünebilir. Shorts videolar otomatik döngüye girdiği için ort. izleme süresi ve % video uzunluğunu aşabilir.</p>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -295,7 +313,12 @@ export default function AnalyticsPage() {
                   <tr>
                     <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Video</th>
                     <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Kanal</th>
-                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">İzlenme</th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">
+                      <button type="button" onClick={toggleRetentionSort} className="inline-flex items-center gap-1 justify-end hover:text-gray-200 transition-colors select-none">
+                        İzlenme
+                        {retentionSortDir === 'asc' ? <IconArrowUp /> : retentionSortDir === 'desc' ? <IconArrowDown /> : <IconArrowUpDown />}
+                      </button>
+                    </th>
                     <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Ort. İzleme Süresi</th>
                     <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Ort. İzleme %</th>
                     <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Yayın Tarihi</th>
