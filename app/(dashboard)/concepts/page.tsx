@@ -34,12 +34,20 @@ const STATUS_COLORS: Record<string, string> = {
   testing: 'bg-purple-500/20 text-purple-300',
 }
 
+const STATUS_BORDER: Record<string, string> = {
+  pending: 'border-l-yellow-500',
+  approved: 'border-l-green-500',
+  rejected: 'border-l-red-500',
+  testing: 'border-l-purple-500',
+}
+
 export default function ConceptsPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [selectedChannel, setSelectedChannel] = useState('')
+  const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [selected, setSelected] = useState<Suggestion | null>(null)
@@ -132,12 +140,49 @@ export default function ConceptsPage() {
     } finally { setSubmitting(false) }
   }
 
+  // Ayni kanal + durumdaki kardesler (yayinlanma sirasi bu grup icinde anlamli)
+  function siblingsOf(s: Suggestion) {
+    return suggestions
+      .filter(x => x.channel_id === s.channel_id && x.status === s.status)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  }
+
   async function handleReorder(s: Suggestion, direction: 'up' | 'down', e: React.MouseEvent) {
     e.stopPropagation()
     if (reorderingId) return
     setReorderingId(s.id)
     try {
       await api.post(`/concepts/suggestions/${s.id}/reorder`, { direction })
+      await fetchData()
+    } finally {
+      setReorderingId(null)
+    }
+  }
+
+  async function handleMoveToTop(s: Suggestion, e: React.MouseEvent) {
+    e.stopPropagation()
+    if (reorderingId) return
+    const sibs = siblingsOf(s)
+    if (sibs.length < 2 || sibs[0].id === s.id) return
+    setReorderingId(s.id)
+    try {
+      const ids = [s.id, ...sibs.filter(x => x.id !== s.id).map(x => x.id)]
+      await api.post('/concepts/suggestions/reorder-batch', { ids })
+      await fetchData()
+    } finally {
+      setReorderingId(null)
+    }
+  }
+
+  async function handleMoveToBottom(s: Suggestion, e: React.MouseEvent) {
+    e.stopPropagation()
+    if (reorderingId) return
+    const sibs = siblingsOf(s)
+    if (sibs.length < 2 || sibs[sibs.length - 1].id === s.id) return
+    setReorderingId(s.id)
+    try {
+      const ids = [...sibs.filter(x => x.id !== s.id).map(x => x.id), s.id]
+      await api.post('/concepts/suggestions/reorder-batch', { ids })
       await fetchData()
     } finally {
       setReorderingId(null)
@@ -155,6 +200,12 @@ export default function ConceptsPage() {
       : filter === 'approved'
         ? suggestions.filter(s => s.status === 'approved' && !s.used)
         : suggestions.filter(s => s.status === filter)
+
+  const searched = search.trim()
+    ? filtered.filter(s =>
+        s.suggested_name.toLowerCase().includes(search.trim().toLowerCase()) ||
+        (s.suggested_prompt || '').toLowerCase().includes(search.trim().toLowerCase()))
+    : filtered
 
   const counts: Record<string, number> = {
     all: suggestions.length,
@@ -180,23 +231,41 @@ export default function ConceptsPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">Kanal:</label>
-          <select value={selectedChannel} onChange={e => setSelectedChannel(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Tum Kanallar</option>
-            {channels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+      <div className="sticky top-0 z-10 bg-[#0a0e17]/95 backdrop-blur-sm pt-1 pb-3 -mx-6 px-6 mb-3 border-b border-gray-800/60">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500">Kanal:</label>
+            <select value={selectedChannel} onChange={e => setSelectedChannel(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Tum Kanallar</option>
+              {channels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {statuses.map(s => (
+              <button key={s} onClick={() => setFilter(s)}
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === s ? (s === 'used' ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white') : 'bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700'}`}>
+                {(s === 'all' ? 'Tumu' : s === 'used' ? 'Kullanildi' : STATUS_LABEL[s])} ({counts[s]})
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 min-w-[180px] flex items-center gap-2 ml-auto">
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Konsept ara..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="text-xs text-gray-500 hover:text-white shrink-0">
+                Temizle
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
-          {statuses.map(s => (
-            <button key={s} onClick={() => setFilter(s)}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === s ? (s === 'used' ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white') : 'bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700'}`}>
-              {(s === 'all' ? 'Tumu' : s === 'used' ? 'Kullanildi' : STATUS_LABEL[s])} ({counts[s]})
-            </button>
-          ))}
-        </div>
+        <p className="text-xs text-gray-600">
+          {search ? `${searched.length} sonuc bulundu` : `${searched.length} konsept listeleniyor`}
+        </p>
       </div>
 
       {showForm && (
@@ -248,67 +317,93 @@ export default function ConceptsPage() {
         </form>
       )}
 
-      {filtered.length === 0 ? (
+      {searched.length === 0 ? (
         <div className="bg-gray-900 rounded-xl p-12 text-center border border-gray-800">
-          <p className="text-gray-500 mb-3">Konsept bulunamadi.</p>
-          <button onClick={() => setShowForm(true)} className="text-sm text-blue-400 hover:underline">
-            Ilk konsepti ekle
-          </button>
+          <p className="text-gray-500 mb-3">{search ? 'Aramanizla eslesen konsept bulunamadi.' : 'Konsept bulunamadi.'}</p>
+          {!search && (
+            <button onClick={() => setShowForm(true)} className="text-sm text-blue-400 hover:underline">
+              Ilk konsepti ekle
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((s, idx) => (
-            <div key={s.id}
-              onClick={() => openDetail(s)}
-              className="bg-gray-900 rounded-xl p-5 border border-gray-800 cursor-pointer hover:border-blue-500/50 hover:bg-gray-800/80 transition-all">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col items-center gap-1 mr-4 shrink-0">
-                  <button
-                    onClick={(e) => handleReorder(s, 'up', e)}
-                    disabled={idx === 0 || reorderingId === s.id}
-                    title="Siraya al (daha once yayinla)"
-                    className="w-6 h-6 flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs">
-                    &#9650;
-                  </button>
-                  <button
-                    onClick={(e) => handleReorder(s, 'down', e)}
-                    disabled={idx === filtered.length - 1 || reorderingId === s.id}
-                    title="Siradan geriye al (daha sonra yayinla)"
-                    className="w-6 h-6 flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs">
-                    &#9660;
-                  </button>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1 flex-wrap">
-                    <h3 className="font-semibold text-white">{s.suggested_name}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[s.status] || 'bg-gray-700 text-gray-400'}`}>
-                      {STATUS_LABEL[s.status] || s.status}
+          {searched.map((s) => {
+            const sibs = siblingsOf(s)
+            const sibIdx = sibs.findIndex(x => x.id === s.id)
+            const isFirst = sibIdx <= 0
+            const isLast = sibIdx === sibs.length - 1
+            const isBusy = reorderingId === s.id
+            return (
+              <div key={s.id}
+                onClick={() => openDetail(s)}
+                className={`bg-gray-900 rounded-xl p-5 border border-gray-800 border-l-4 ${s.used ? 'border-l-blue-500' : (STATUS_BORDER[s.status] || 'border-l-gray-600')} cursor-pointer hover:border-blue-500/50 hover:bg-gray-800/80 transition-all ${isBusy ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex justify-between items-start">
+                  <div className="flex flex-col items-center gap-0.5 mr-4 shrink-0">
+                    <button
+                      onClick={(e) => handleMoveToTop(s, e)}
+                      disabled={isFirst || isBusy}
+                      title="En uste tasi"
+                      className="w-6 h-6 flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px]">
+                      &#9195;
+                    </button>
+                    <button
+                      onClick={(e) => handleReorder(s, 'up', e)}
+                      disabled={isFirst || isBusy}
+                      title="Yukari tasi"
+                      className="w-6 h-6 flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs">
+                      &#9650;
+                    </button>
+                    <span className="text-[10px] text-gray-600 tabular-nums leading-tight py-0.5" title="Kanal + durum sirasi">
+                      {sibIdx + 1}/{sibs.length}
                     </span>
-                    {s.used && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 flex items-center gap-1">
-                        Kullanildi
+                    <button
+                      onClick={(e) => handleReorder(s, 'down', e)}
+                      disabled={isLast || isBusy}
+                      title="Asagi tasi"
+                      className="w-6 h-6 flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs">
+                      &#9660;
+                    </button>
+                    <button
+                      onClick={(e) => handleMoveToBottom(s, e)}
+                      disabled={isLast || isBusy}
+                      title="En alta tasi"
+                      className="w-6 h-6 flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px]">
+                      &#9196;
+                    </button>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1 flex-wrap">
+                      <h3 className="font-semibold text-white">{s.suggested_name}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[s.status] || 'bg-gray-700 text-gray-400'}`}>
+                        {STATUS_LABEL[s.status] || s.status}
                       </span>
+                      {s.used && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 flex items-center gap-1">
+                          Kullanildi
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">
+                      {channelName(s.channel_id)} - {new Date(s.created_at).toLocaleDateString('tr-TR')}
+                    </p>
+                    {s.suggested_prompt && (
+                      <p className="text-sm text-gray-400 line-clamp-2">{s.suggested_prompt}</p>
+                    )}
+                    {s.used && s.youtube_video_id && (
+                      <a href={`https://www.youtube.com/watch?v=${s.youtube_video_id}`}
+                        target="_blank" rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="text-xs text-blue-400 hover:underline mt-2 inline-block">
+                        YouTube&apos;da goruntule &rarr;
+                      </a>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mb-2">
-                    {channelName(s.channel_id)} - {new Date(s.created_at).toLocaleDateString('tr-TR')}
-                  </p>
-                  {s.suggested_prompt && (
-                    <p className="text-sm text-gray-400 line-clamp-2">{s.suggested_prompt}</p>
-                  )}
-                  {s.used && s.youtube_video_id && (
-                    <a href={`https://www.youtube.com/watch?v=${s.youtube_video_id}`}
-                      target="_blank" rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="text-xs text-blue-400 hover:underline mt-2 inline-block">
-                      YouTube&apos;da goruntule &rarr;
-                    </a>
-                  )}
+                  <span className="text-xs text-gray-600 ml-4 mt-1 shrink-0">Duzenle &rarr;</span>
                 </div>
-                <span className="text-xs text-gray-600 ml-4 mt-1 shrink-0">Duzenle &rarr;</span>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
