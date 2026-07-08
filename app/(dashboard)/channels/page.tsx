@@ -117,7 +117,7 @@ const BYTEPLUS_MODEL_IDS = new Set([
   'bytedance/seedance-2.0-fast/text-to-video',
   'bytedance/seedance-2.0-mini/text-to-video',
 ])
-function providerLabel(id) {
+function providerLabel(id: string) {
   return BYTEPLUS_MODEL_IDS.has(id) ? 'BytePlus' : 'Atlas Cloud'
 }
 
