@@ -112,6 +112,15 @@ const MODEL_GROUPS = [
   },
 ]
 
+const BYTEPLUS_MODEL_IDS = new Set([
+  'bytedance/seedance-2.0/text-to-video',
+  'bytedance/seedance-2.0-fast/text-to-video',
+  'bytedance/seedance-2.0-mini/text-to-video',
+])
+function providerLabel(id) {
+  return BYTEPLUS_MODEL_IDS.has(id) ? 'BytePlus' : 'Atlas Cloud'
+}
+
 const FORMAT_OPTIONS = [
   { id: 'shorts', label: 'Shorts' },
   { id: 'long', label: 'Uzun Video' },
@@ -305,7 +314,7 @@ export default function ChannelsPage() {
                           {MODEL_GROUPS.map(group => (
                             <optgroup key={group.label} label={group.label}>
                               {group.models.map(m => (
-                                <option key={m.id} value={m.id}>{m.label}</option>
+                                <option key={m.id} value={m.id}>{m.label}{group.label !== '🤖 LLM Modeller' ? ` · ${providerLabel(m.id)}` : ''}</option>
                               ))}
                             </optgroup>
                           ))}
