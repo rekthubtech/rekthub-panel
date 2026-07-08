@@ -318,6 +318,56 @@ export default function AnalyticsPage() {
           </div>
         )}
 
+        {/* SON VİDEOLAR — varsayılan kapalı, tıklayınca açılır */}
+        <div className="bg-gray-900 rounded-2xl border border-gray-800">
+          <button
+            type="button"
+            onClick={() => setVideosOpen(o => !o)}
+            className="w-full p-5 flex items-center justify-between gap-2 text-left hover:bg-white/[0.02] transition-colors rounded-2xl"
+          >
+            <div className="flex items-center gap-2">
+              <IconVideo /><h3 className="font-semibold text-white">Son Videolar</h3>
+              <span className="text-xs text-gray-500">({recent.length})</span>
+            </div>
+            <span className={`text-gray-500 transition-transform duration-200 ${videosOpen ? 'rotate-180' : ''}`}><IconChevronDown /></span>
+          </button>
+          {videosOpen && (
+            recent.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 text-sm border-t border-gray-800">Henüz video yok.</div>
+            ) : (
+              <>
+              <div className="divide-y divide-gray-800 border-t border-gray-800">
+                {videosPageItems.map(v => (
+                  <div key={v.id} className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{v.title}</p>
+                      <p className="text-xs text-gray-500">
+                        {v.channel_name} · {v.published_at ? new Date(v.published_at).toLocaleDateString('tr-TR') : '—'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-400">{fmtUsd(v.cost_usd, 3)}</span>
+                        {v.cost_usd != null && (
+                          v.cost_estimated === false ? (
+                            <span title="Gerçek token tüketiminden ölçülen maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-300">gerçek</span>
+                          ) : (
+                            <span title="Model fiyatı × süre üzerinden tahmini maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300">tahmini</span>
+                          )
+                        )}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[v.status] || 'bg-gray-700 text-gray-400'}`}>
+                        {statusLabel[v.status] || v.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Pagination page={videosPage} totalPages={videosTotalPages} onChange={setVideosPage} />
+              </>
+            )
+          )}
+        </div>
         {/* VİDEO PERFORMANSI (İZLENME) — takip için öncelikli */}
         {retention.length > 0 && (
           <div className="relative bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
@@ -399,56 +449,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* SON VİDEOLAR — varsayılan kapalı, tıklayınca açılır */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800">
-          <button
-            type="button"
-            onClick={() => setVideosOpen(o => !o)}
-            className="w-full p-5 flex items-center justify-between gap-2 text-left hover:bg-white/[0.02] transition-colors rounded-2xl"
-          >
-            <div className="flex items-center gap-2">
-              <IconVideo /><h3 className="font-semibold text-white">Son Videolar</h3>
-              <span className="text-xs text-gray-500">({recent.length})</span>
-            </div>
-            <span className={`text-gray-500 transition-transform duration-200 ${videosOpen ? 'rotate-180' : ''}`}><IconChevronDown /></span>
-          </button>
-          {videosOpen && (
-            recent.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 text-sm border-t border-gray-800">Henüz video yok.</div>
-            ) : (
-              <>
-              <div className="divide-y divide-gray-800 border-t border-gray-800">
-                {videosPageItems.map(v => (
-                  <div key={v.id} className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{v.title}</p>
-                      <p className="text-xs text-gray-500">
-                        {v.channel_name} · {v.published_at ? new Date(v.published_at).toLocaleDateString('tr-TR') : '—'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-xs text-gray-400">{fmtUsd(v.cost_usd, 3)}</span>
-                        {v.cost_usd != null && (
-                          v.cost_estimated === false ? (
-                            <span title="Gerçek token tüketiminden ölçülen maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-300">gerçek</span>
-                          ) : (
-                            <span title="Model fiyatı × süre üzerinden tahmini maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300">tahmini</span>
-                          )
-                        )}
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[v.status] || 'bg-gray-700 text-gray-400'}`}>
-                        {statusLabel[v.status] || v.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Pagination page={videosPage} totalPages={videosTotalPages} onChange={setVideosPage} />
-              </>
-            )
-          )}
-        </div>
       </div>
 
       {/* MALİYET */}
