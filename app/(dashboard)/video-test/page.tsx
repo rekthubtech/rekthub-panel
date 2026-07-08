@@ -101,6 +101,15 @@ const ATLAS_MODEL_GROUPS = [
   },
 ]
 
+const BYTEPLUS_MODEL_IDS = new Set([
+  'bytedance/seedance-2.0/text-to-video',
+  'bytedance/seedance-2.0-fast/text-to-video',
+  'bytedance/seedance-2.0-mini/text-to-video',
+])
+function providerLabel(id: string) {
+  return BYTEPLUS_MODEL_IDS.has(id) ? 'BytePlus' : 'Atlas Cloud'
+}
+
 const ASPECT_RATIO_OPTIONS = [
   { id: '', label: 'Model Varsayilani' },
   { id: '16:9', label: '16:9 (Yatay)' },
@@ -231,7 +240,7 @@ export default function VideoTestPage() {
             {ATLAS_MODEL_GROUPS.map(group => (
               <optgroup key={group.label} label={group.label}>
                 {group.models.map(m => (
-                  <option key={m.id} value={m.id}>{m.label}</option>
+                  <option key={m.id} value={m.id}>{m.label} · {providerLabel(m.id)}</option>
                 ))}
               </optgroup>
             ))}
