@@ -39,6 +39,12 @@ interface ManualExpense {
   currency?: string;
 }
 
+interface VideoRetention {
+  content_item_id: number; title: string; channel_name: string;
+  youtube_video_id: string; published_at: string;
+  views: number; avg_view_duration_sec: number; avg_view_percentage: number;
+}
+
 const CURRENCIES = [
   { code: 'TRY', symbol: '₺', label: 'Türk Lirası (₺)' },
   { code: 'USD', symbol: '$', label: 'Dolar ($)' },
@@ -69,6 +75,7 @@ export default function AnalyticsPage() {
   const [channelCosts, setChannelCosts] = useState<ChannelCost[]>([])
   const [manualExpenses, setManualExpenses] = useState<ManualExpense[]>([])
   const [channels, setChannels] = useState<{ id: string; name: string }[]>([])
+  const [retention, setRetention] = useState<VideoRetention[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -83,7 +90,7 @@ export default function AnalyticsPage() {
   async function fetchData() {
     setLoading(true)
     try {
-      const [s, ab, v, vc, summary, manual, ch] = await Promise.all([
+      const [s, ab, v, vc, summary, manual, ch, ret] = await Promise.all([
         api.get<Stats>('/analytics/summary'),
         api.get<AtlasBalance>('/analytics/atlas-balance').catch(() => null),
         api.get<VideoRow[]>('/analytics/recent-videos'),
@@ -91,6 +98,7 @@ export default function AnalyticsPage() {
         api.get<any>('/costs/summary').catch(() => null),
         api.get<ManualExpense[]>('/costs/manual').catch(() => []),
         api.get<any[]>('/channels').catch(() => []),
+        api.get<{ videos: VideoRetention[] }>('/analytics/video-retention').catch(() => null),
       ])
       setStats(s)
       setAtlasBalance(ab)
@@ -99,6 +107,7 @@ export default function AnalyticsPage() {
       if (summary?.channels) setChannelCosts(summary.channels)
       setManualExpenses(manual || [])
       setChannels((ch || []).map((c: any) => ({ id: c.id, name: c.name || c.channel_name || c.id })))
+      setRetention(ret?.videos || [])
     } finally { setLoading(false) }
   }
 
@@ -269,6 +278,52 @@ export default function AnalyticsPage() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* VİDEO PERFORMANSI (İZLENME) */}
+        {retention.length > 0 && (
+          <div className="bg-gray-900 rounded-xl border border-gray-800">
+            <div className="p-5 border-b border-gray-800">
+              <h3 className="font-semibold text-white">Video Performansı (İzlenme Süresi)</h3>
+              <p className="text-xs text-gray-500 mt-1">YouTube Analytics verisi; yeni yayınlanan videolarda 48-72 saat gecikmeli görünebilir.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-800/50">
+                  <tr>
+                    <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Video</th>
+                    <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Kanal</th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">İzlenme</th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Ort. İzleme Süresi</th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Ort. İzleme %</th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Yayın Tarihi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {retention.map(r => (
+                    <tr key={r.content_item_id}>
+                      <td className="px-5 py-3 font-medium text-white max-w-xs truncate">
+                        <a href={`https://youtube.com/watch?v=${r.youtube_video_id}`} target="_blank" rel="noreferrer" className="hover:underline">
+                          {r.title}
+                        </a>
+                      </td>
+                      <td className="px-5 py-3 text-gray-400">{r.channel_name}</td>
+                      <td className="px-5 py-3 text-right text-gray-300">{Number(r.views || 0).toLocaleString('tr-TR')}</td>
+                      <td className="px-5 py-3 text-right text-gray-300">
+                        {r.avg_view_duration_sec != null ? `${Math.round(Number(r.avg_view_duration_sec))}sn` : '—'}
+                      </td>
+                      <td className="px-5 py-3 text-right text-gray-300">
+                        {r.avg_view_percentage != null ? `%${Number(r.avg_view_percentage).toFixed(1)}` : '—'}
+                      </td>
+                      <td className="px-5 py-3 text-right text-gray-500">
+                        {r.published_at ? new Date(r.published_at).toLocaleDateString('tr-TR') : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
