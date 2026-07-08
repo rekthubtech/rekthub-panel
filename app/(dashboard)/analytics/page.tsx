@@ -20,8 +20,12 @@ interface VideoCostMonth {
   month: string; total_usd: number; video_count: number;
 }
 
+interface VideoCostProvider {
+  provider: string; total_usd: number; video_count: number;
+}
+
 interface VideoCostSummary {
-  total_usd: number | null; video_count: number; real_count?: number; monthly: VideoCostMonth[];
+  total_usd: number | null; video_count: number; real_count?: number; monthly: VideoCostMonth[]; by_provider?: VideoCostProvider[];
 }
 
 interface ChannelCost {
@@ -230,6 +234,17 @@ export default function AnalyticsPage() {
                 )}
               </span>
             </div>
+            {videoCosts.by_provider && videoCosts.by_provider.length > 0 && (
+              <div className="px-5 py-3 border-b border-gray-800 flex flex-wrap gap-3">
+                {videoCosts.by_provider.map(p => (
+                  <div key={p.provider} className="bg-gray-800/60 rounded-lg px-3 py-2 text-xs flex items-center gap-2">
+                    <span className="text-gray-400">{p.provider === 'seedance' ? 'Seedance (BytePlus)' : p.provider === 'atlas' ? 'Atlas Cloud' : p.provider}:</span>
+                    <span className="text-white font-semibold">{fmtUsd(p.total_usd, 2)}</span>
+                    <span className="text-gray-500">({p.video_count} video)</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {videoCosts.monthly.length === 0 ? (
               <div className="p-8 text-center text-gray-500 text-sm">Henüz maliyet verisi yok.</div>
             ) : (
