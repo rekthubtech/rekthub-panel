@@ -142,6 +142,43 @@ const RESOLUTION_OPTIONS = [
   { id: '4k', label: '4K' },
 ]
 
+const AVATAR_GRADIENTS = [
+  'from-blue-500 to-indigo-600',
+  'from-pink-500 to-rose-600',
+  'from-emerald-500 to-teal-600',
+  'from-amber-500 to-orange-600',
+  'from-purple-500 to-fuchsia-600',
+  'from-cyan-500 to-sky-600',
+]
+function avatarGradient(id: number) {
+  return AVATAR_GRADIENTS[Math.abs(id) % AVATAR_GRADIENTS.length]
+}
+
+const IconFilm = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 shrink-0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4"/></svg>
+)
+const IconClock = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 shrink-0"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+)
+const IconAspect = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 shrink-0"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 10v4M16 10v4"/></svg>
+)
+const IconPlay = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 shrink-0"><path d="M8 5v14l11-7z"/></svg>
+)
+const IconPause = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 shrink-0"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+)
+const IconTrash = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 shrink-0"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-9 0v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6"/></svg>
+)
+const IconPlus = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0"><path d="M12 5v14M5 12h14"/></svg>
+)
+const IconTv = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+)
+
 interface ScheduleSlot {
   id: number
   format: string
@@ -274,46 +311,55 @@ export default function ChannelsPage() {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-1">
         <h2 className="text-2xl font-bold text-white">Kanallar</h2>
-        <button onClick={startOAuth} className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-          <span className="text-base leading-none">+</span> Yeni Kanal Ekle
+        <button onClick={startOAuth} className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm shadow-blue-600/20">
+          <IconPlus /> Yeni Kanal Ekle
         </button>
       </div>
+      {channels.length > 0 && (
+        <p className="text-sm text-gray-500 mb-6">
+          {channels.length} kanal · <span className="text-green-400">{channels.filter(c => c.status === 'active').length} aktif</span>
+          {channels.some(c => c.status !== 'active') && <> · <span className="text-gray-500">{channels.filter(c => c.status !== 'active').length} durduruldu</span></>}
+        </p>
+      )}
+      {channels.length === 0 && <div className="mb-6" />}
 
       {channels.length === 0 ? (
         <div className="bg-gray-800/60 rounded-2xl p-12 text-center border border-dashed border-gray-700">
-          <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-xl mx-auto mb-3">📺</div>
+          <div className="w-14 h-14 rounded-2xl bg-gray-700/60 flex items-center justify-center mx-auto mb-4 text-gray-400"><IconTv /></div>
           <p className="text-gray-400 mb-3">Henüz kanal bağlanmamış.</p>
           <button onClick={startOAuth} className="text-blue-400 text-sm font-medium hover:text-blue-300">
             Google hesabı bağlayarak kanal ekle →
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {channels.map(ch => {
             const vs = (ch.branding && ch.branding.video_settings) || {}
             const isActive = ch.status === 'active'
+            const expanded = showSlots === ch.id || showVideoSettings === ch.id
             return (
-            <div key={ch.id} className="bg-gray-800/60 rounded-2xl p-5 border border-gray-700 hover:border-gray-600 transition-colors shadow-sm">
+            <div key={ch.id} className={`relative bg-gray-800/50 rounded-2xl p-5 pl-6 border transition-all shadow-lg shadow-black/10 ${isActive ? 'border-gray-700 hover:border-gray-600' : 'border-gray-800 opacity-80'} ${expanded ? 'xl:col-span-2' : ''}`}>
+              <span className={`absolute left-0 top-5 bottom-5 w-1 rounded-full ${isActive ? 'bg-green-500/70' : 'bg-gray-600'}`} />
               <div className="flex justify-between items-start gap-4">
-                <div className="flex items-start gap-4 flex-1 min-w-0">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold shrink-0 ${isActive ? 'bg-blue-600/15 text-blue-400 ring-1 ring-blue-500/30' : 'bg-gray-700/60 text-gray-500'}`}>
+                <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold shrink-0 text-white bg-gradient-to-br shadow-inner ${avatarGradient(ch.id)} ${!isActive ? 'grayscale opacity-60' : ''}`}>
                     {ch.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-semibold text-white truncate">{ch.name}</h3>
-                      <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-green-500/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
+                      <h3 className="font-semibold text-white text-[15px] truncate">{ch.name}</h3>
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full font-medium ${isActive ? 'bg-green-500/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-green-400' : 'bg-gray-500'}`} />
                         {isActive ? 'Aktif' : 'Durduruldu'}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 font-mono truncate">{ch.youtube_channel_id}</p>
+                    <p className="text-[11px] text-gray-500 font-mono truncate bg-black/20 inline-block px-1.5 py-0.5 rounded">{ch.youtube_channel_id}</p>
 
                     <div className="mt-3 flex items-center gap-2 flex-wrap">
-                      <div className="flex items-center gap-1.5 text-xs bg-gray-900/60 border border-gray-700 rounded-full px-3 py-1.5">
-                        <span className="text-gray-500">🎬</span>
+                      <div className="flex items-center gap-1.5 text-xs bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2 text-gray-400">
+                        <span className="text-gray-500"><IconFilm /></span>
                         {editingModel === ch.id ? (
                           <select autoFocus defaultValue={ch.default_model}
                             onChange={e => updateModel(ch.id, e.target.value)}
@@ -334,17 +380,17 @@ export default function ChannelsPage() {
                         )}
                       </div>
                       <button onClick={() => toggleSlots(ch)}
-                        className={`flex items-center gap-1.5 text-xs rounded-full px-3 py-1.5 border transition-colors ${showSlots === ch.id ? 'bg-blue-600/10 border-blue-500/40 text-blue-400' : 'bg-gray-900/60 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'}`}>
-                        <span>🕐</span> Zamanlama <span className="text-gray-600">·</span> {ch.schedule_slots?.length ?? 0} slot
+                        className={`flex items-center gap-1.5 text-xs rounded-xl px-3 py-2 border transition-colors ${showSlots === ch.id ? 'bg-blue-600/10 border-blue-500/40 text-blue-400' : 'bg-white/[0.04] border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'}`}>
+                        <IconClock /> Zamanlama <span className="text-gray-600">·</span> {ch.schedule_slots?.length ?? 0} slot
                       </button>
                       <button onClick={() => toggleVideoSettings(ch)}
-                        className={`flex items-center gap-1.5 text-xs rounded-full px-3 py-1.5 border transition-colors ${showVideoSettings === ch.id ? 'bg-blue-600/10 border-blue-500/40 text-blue-400' : 'bg-gray-900/60 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'}`}>
-                        <span>📐</span> {vs.duration || 5}sn · {vs.aspect_ratio || 'varsayılan'} · {vs.resolution || 'varsayılan'}
+                        className={`flex items-center gap-1.5 text-xs rounded-xl px-3 py-2 border transition-colors ${showVideoSettings === ch.id ? 'bg-blue-600/10 border-blue-500/40 text-blue-400' : 'bg-white/[0.04] border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'}`}>
+                        <IconAspect /> {vs.duration || 5}sn · {vs.aspect_ratio || 'varsayılan'} · {vs.resolution || 'varsayılan'}
                       </button>
                     </div>
 
                     {showSlots === ch.id && (
-                      <div className="mt-3 p-4 bg-gray-900/60 rounded-xl border border-gray-800">
+                      <div className="mt-3 p-4 bg-black/20 rounded-xl border border-white/10">
                         {slotsLoading ? (
                           <p className="text-xs text-gray-500 mb-2">Yükleniyor…</p>
                         ) : (
@@ -375,7 +421,7 @@ export default function ChannelsPage() {
                       </div>
                     )}
                     {showVideoSettings === ch.id && (
-                      <div className="mt-3 p-4 bg-gray-900/60 rounded-xl border border-gray-800">
+                      <div className="mt-3 p-4 bg-black/20 rounded-xl border border-white/10">
                         <p className="text-xs text-gray-500 mb-3">Bu kanal için otomatik üretilecek videoların varsayılan süre/format/kalite ayarları. Zamanlanmış tüm paylaşımlarda kullanılır.</p>
                         <div className="grid grid-cols-3 gap-2">
                           <div>
@@ -412,10 +458,12 @@ export default function ChannelsPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => toggleStatus(ch)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${isActive ? 'bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20' : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'}`}>
-                    {isActive ? 'Durdur' : 'Başlat'}
+                    className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl font-medium transition-colors border ${isActive ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20' : 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'}`}>
+                    {isActive ? <IconPause /> : <IconPlay />} {isActive ? 'Durdur' : 'Başlat'}
                   </button>
-                  <button onClick={() => setDeleteConfirm(ch.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors font-medium">Sil</button>
+                  <button onClick={() => setDeleteConfirm(ch.id)} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors font-medium">
+                    <IconTrash /> Sil
+                  </button>
                 </div>
               </div>
             </div>
@@ -427,7 +475,7 @@ export default function ChannelsPage() {
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-2xl p-6 max-w-sm w-full border border-gray-700 shadow-xl">
-            <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-lg mb-3">🗑️</div>
+            <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center mb-3 text-red-400"><IconTrash /></div>
             <h3 className="font-semibold text-white mb-2">Kanalı sil</h3>
             <p className="text-sm text-gray-400 mb-4">Bu kanal kalıcı olarak silinecek. Emin misin?</p>
             <div className="flex gap-2 justify-end">
