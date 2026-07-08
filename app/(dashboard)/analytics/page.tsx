@@ -155,7 +155,8 @@ export default function AnalyticsPage() {
   const [videosOpen, setVideosOpen] = useState(false)
   const [videosPage, setVideosPage] = useState(1)
   const [retentionPage, setRetentionPage] = useState(1)
-  const [retentionSortDir, setRetentionSortDir] = useState<'asc' | 'desc' | null>(null)
+  const [retentionSortKey, setRetentionSortKey] = useState<'title' | 'channel_name' | 'views' | 'avg_view_duration_sec' | 'avg_view_percentage' | 'published_at' | null>(null)
+  const [retentionSortDir, setRetentionSortDir] = useState<'asc' | 'desc'>('asc')
   const PAGE_SIZE = 10
   const [form, setForm] = useState({
     description: '', amount: '',
@@ -213,9 +214,14 @@ export default function AnalyticsPage() {
     fetchData()
   }
 
-  function toggleRetentionSort() {
+  function toggleRetentionSort(key: 'title' | 'channel_name' | 'views' | 'avg_view_duration_sec' | 'avg_view_percentage' | 'published_at') {
     setRetentionPage(1)
-    setRetentionSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    if (retentionSortKey === key) {
+      setRetentionSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setRetentionSortKey(key)
+      setRetentionSortDir('asc')
+    }
   }
 
   const currencyTotals = manualExpenses.reduce((acc, exp) => {
@@ -247,8 +253,24 @@ export default function AnalyticsPage() {
   const bytePlusSpend = bytePlusProvider ? bytePlusProvider.total_usd : null
   const bytePlusVideoCount = bytePlusProvider ? bytePlusProvider.video_count : 0
 
-  const sortedRetention = retentionSortDir
-    ? [...retention].sort((a, b) => retentionSortDir === 'asc' ? (Number(a.views || 0) - Number(b.views || 0)) : (Number(b.views || 0) - Number(a.views || 0)))
+  const sortedRetention = retentionSortKey
+    ? [...retention].sort((a, b) => {
+        let av: any = a[retentionSortKey]
+        let bv: any = b[retentionSortKey]
+        if (retentionSortKey === 'published_at') {
+          av = av ? new Date(av).getTime() : 0
+          bv = bv ? new Date(bv).getTime() : 0
+        } else if (retentionSortKey === 'title' || retentionSortKey === 'channel_name') {
+          av = String(av || '').toLowerCase()
+          bv = String(bv || '').toLowerCase()
+        } else {
+          av = Number(av || 0)
+          bv = Number(bv || 0)
+        }
+        if (av < bv) return retentionSortDir === 'asc' ? -1 : 1
+        if (av > bv) return retentionSortDir === 'asc' ? 1 : -1
+        return 0
+      })
     : retention
   const retentionTotalPages = Math.max(1, Math.ceil(sortedRetention.length / PAGE_SIZE))
   const retentionPageItems = sortedRetention.slice((retentionPage - 1) * PAGE_SIZE, retentionPage * PAGE_SIZE)
@@ -311,17 +333,42 @@ export default function AnalyticsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-800/50">
                   <tr>
-                    <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Video</th>
-                    <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Kanal</th>
-                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">
-                      <button type="button" onClick={toggleRetentionSort} className="inline-flex items-center gap-1 justify-end hover:text-gray-200 transition-colors select-none">
-                        İzlenme
-                        {retentionSortDir === 'asc' ? <IconArrowUp /> : retentionSortDir === 'desc' ? <IconArrowDown /> : <IconArrowUpDown />}
+                    <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">
+                      <button type="button" onClick={() => toggleRetentionSort('title')} className="inline-flex items-center gap-1 justify-start hover:text-gray-200 transition-colors select-none">
+                        Video
+                        {retentionSortKey === 'title' ? (retentionSortDir === 'asc' ? <IconArrowUp /> : <IconArrowDown />) : <IconArrowUpDown />}
                       </button>
                     </th>
-                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Ort. İzleme Süresi</th>
-                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Ort. İzleme %</th>
-                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Yayın Tarihi</th>
+                    <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">
+                      <button type="button" onClick={() => toggleRetentionSort('channel_name')} className="inline-flex items-center gap-1 justify-start hover:text-gray-200 transition-colors select-none">
+                        Kanal
+                        {retentionSortKey === 'channel_name' ? (retentionSortDir === 'asc' ? <IconArrowUp /> : <IconArrowDown />) : <IconArrowUpDown />}
+                      </button>
+                    </th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">
+                      <button type="button" onClick={() => toggleRetentionSort('views')} className="inline-flex items-center gap-1 justify-end hover:text-gray-200 transition-colors select-none">
+                        İzlenme
+                        {retentionSortKey === 'views' ? (retentionSortDir === 'asc' ? <IconArrowUp /> : <IconArrowDown />) : <IconArrowUpDown />}
+                      </button>
+                    </th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">
+                      <button type="button" onClick={() => toggleRetentionSort('avg_view_duration_sec')} className="inline-flex items-center gap-1 justify-end hover:text-gray-200 transition-colors select-none">
+                        Ort. İzleme Süresi
+                        {retentionSortKey === 'avg_view_duration_sec' ? (retentionSortDir === 'asc' ? <IconArrowUp /> : <IconArrowDown />) : <IconArrowUpDown />}
+                      </button>
+                    </th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">
+                      <button type="button" onClick={() => toggleRetentionSort('avg_view_percentage')} className="inline-flex items-center gap-1 justify-end hover:text-gray-200 transition-colors select-none">
+                        Ort. İzleme %
+                        {retentionSortKey === 'avg_view_percentage' ? (retentionSortDir === 'asc' ? <IconArrowUp /> : <IconArrowDown />) : <IconArrowUpDown />}
+                      </button>
+                    </th>
+                    <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">
+                      <button type="button" onClick={() => toggleRetentionSort('published_at')} className="inline-flex items-center gap-1 justify-end hover:text-gray-200 transition-colors select-none">
+                        Yayın Tarihi
+                        {retentionSortKey === 'published_at' ? (retentionSortDir === 'asc' ? <IconArrowUp /> : <IconArrowDown />) : <IconArrowUpDown />}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
