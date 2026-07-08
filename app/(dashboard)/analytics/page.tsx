@@ -100,6 +100,9 @@ const IconLayers = () => (
 const IconSparkle = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>
 )
+const IconChevronDown = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0"><path d="m6 9 6 6 6-6"/></svg>
+)
 
 const PROVIDER_META: Record<string, { label: string; dot: string; text: string; bg: string }> = {
   seedance: { label: 'Seedance (BytePlus)', dot: 'bg-purple-400', text: 'text-purple-300', bg: 'bg-purple-500/10 border-purple-500/20' },
@@ -121,6 +124,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [videosOpen, setVideosOpen] = useState(false)
   const [form, setForm] = useState({
     description: '', amount: '',
     expense_date: new Date().toISOString().slice(0, 10),
@@ -247,105 +251,10 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        <div className="bg-gray-900 rounded-2xl border border-gray-800">
-          <div className="p-5 border-b border-gray-800 flex items-center gap-2">
-            <IconVideo /><h3 className="font-semibold text-white">Son Videolar</h3>
-          </div>
-          {recent.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 text-sm">Henüz video yok.</div>
-          ) : (
-            <div className="divide-y divide-gray-800">
-              {recent.map(v => (
-                <div key={v.id} className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{v.title}</p>
-                    <p className="text-xs text-gray-500">
-                      {v.channel_name} · {v.published_at ? new Date(v.published_at).toLocaleDateString('tr-TR') : '—'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-xs text-gray-400">{fmtUsd(v.cost_usd, 3)}</span>
-                      {v.cost_usd != null && (
-                        v.cost_estimated === false ? (
-                          <span title="Gerçek token tüketiminden ölçülen maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-300">gerçek</span>
-                        ) : (
-                          <span title="Model fiyatı × süre üzerinden tahmini maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300">tahmini</span>
-                        )
-                      )}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[v.status] || 'bg-gray-700 text-gray-400'}`}>
-                      {statusLabel[v.status] || v.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* VİDEO ÜRETİM MALİYETİ */}
-        {videoCosts && (
-          <div className="bg-gray-900 rounded-2xl border border-gray-800">
-            <div className="p-5 border-b border-gray-800 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2"><IconBarChart /><h3 className="font-semibold text-white">Video Üretim Maliyeti</h3></div>
-              <span className="text-sm text-gray-400 text-right">
-                Toplam: <span className="text-white font-semibold">{fmtUsd(videoCosts.total_usd)}</span>
-                {' '}<span className="text-gray-500">({videoCosts.video_count} video)</span>
-                {typeof videoCosts.real_count === 'number' && (
-                  <span className="block text-xs text-gray-500 mt-0.5">
-                    <span className="text-green-400">{videoCosts.real_count} gerçek</span>
-                    {' · '}
-                    <span className="text-yellow-400">{videoCosts.video_count - videoCosts.real_count} tahmini</span>
-                  </span>
-                )}
-              </span>
-            </div>
-            {videoCosts.by_provider && videoCosts.by_provider.length > 0 && (
-              <div className="px-5 py-3 border-b border-gray-800 flex flex-wrap gap-3">
-                {videoCosts.by_provider.map(p => {
-                  const meta = providerMeta(p.provider)
-                  return (
-                    <div key={p.provider} className={`rounded-xl px-3 py-2 text-xs flex items-center gap-2 border ${meta.bg}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                      <span className="text-gray-400">{meta.label}:</span>
-                      <span className={`font-semibold ${meta.text}`}>{fmtUsd(p.total_usd, 2)}</span>
-                      <span className="text-gray-500">({p.video_count} video)</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-            {videoCosts.monthly.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 text-sm">Henüz maliyet verisi yok.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-800/50">
-                    <tr>
-                      <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Ay</th>
-                      <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Video Sayısı</th>
-                      <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Toplam Maliyet</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-800">
-                    {videoCosts.monthly.slice().reverse().map(m => (
-                      <tr key={m.month}>
-                        <td className="px-5 py-3 font-medium text-white">{m.month}</td>
-                        <td className="px-5 py-3 text-right text-gray-400">{m.video_count}</td>
-                        <td className="px-5 py-3 text-right font-semibold text-red-400">{fmtUsd(m.total_usd, 2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* VİDEO PERFORMANSI (İZLENME) */}
+        {/* VİDEO PERFORMANSI (İZLENME) — takip için öncelikli */}
         {retention.length > 0 && (
-          <div className="bg-gray-900 rounded-2xl border border-gray-800">
+          <div className="relative bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+            <span className="absolute inset-x-0 top-0 h-1 bg-blue-500/60" />
             <div className="p-5 border-b border-gray-800 flex items-center gap-2">
               <IconEye />
               <div>
@@ -391,6 +300,54 @@ export default function AnalyticsPage() {
             </div>
           </div>
         )}
+
+        {/* SON VİDEOLAR — varsayılan kapalı, tıklayınca açılır */}
+        <div className="bg-gray-900 rounded-2xl border border-gray-800">
+          <button
+            type="button"
+            onClick={() => setVideosOpen(o => !o)}
+            className="w-full p-5 flex items-center justify-between gap-2 text-left hover:bg-white/[0.02] transition-colors rounded-2xl"
+          >
+            <div className="flex items-center gap-2">
+              <IconVideo /><h3 className="font-semibold text-white">Son Videolar</h3>
+              <span className="text-xs text-gray-500">({recent.length})</span>
+            </div>
+            <span className={`text-gray-500 transition-transform duration-200 ${videosOpen ? 'rotate-180' : ''}`}><IconChevronDown /></span>
+          </button>
+          {videosOpen && (
+            recent.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 text-sm border-t border-gray-800">Henüz video yok.</div>
+            ) : (
+              <div className="divide-y divide-gray-800 border-t border-gray-800">
+                {recent.map(v => (
+                  <div key={v.id} className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{v.title}</p>
+                      <p className="text-xs text-gray-500">
+                        {v.channel_name} · {v.published_at ? new Date(v.published_at).toLocaleDateString('tr-TR') : '—'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-400">{fmtUsd(v.cost_usd, 3)}</span>
+                        {v.cost_usd != null && (
+                          v.cost_estimated === false ? (
+                            <span title="Gerçek token tüketiminden ölçülen maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-300">gerçek</span>
+                          ) : (
+                            <span title="Model fiyatı × süre üzerinden tahmini maliyet" className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300">tahmini</span>
+                          )
+                        )}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[v.status] || 'bg-gray-700 text-gray-400'}`}>
+                        {statusLabel[v.status] || v.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </div>
       </div>
 
       {/* MALİYET */}
@@ -536,6 +493,66 @@ export default function AnalyticsPage() {
             </div>
           )}
         </div>
+
+        {/* VİDEO ÜRETİM MALİYETİ — sayfanın en altında */}
+        {videoCosts && (
+          <div className="relative bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+            <span className="absolute inset-x-0 top-0 h-1 bg-red-500/50" />
+            <div className="p-5 border-b border-gray-800 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2"><IconBarChart /><h3 className="font-semibold text-white">Video Üretim Maliyeti</h3></div>
+              <span className="text-sm text-gray-400 text-right">
+                Toplam: <span className="text-white font-semibold">{fmtUsd(videoCosts.total_usd)}</span>
+                {' '}<span className="text-gray-500">({videoCosts.video_count} video)</span>
+                {typeof videoCosts.real_count === 'number' && (
+                  <span className="block text-xs text-gray-500 mt-0.5">
+                    <span className="text-green-400">{videoCosts.real_count} gerçek</span>
+                    {' · '}
+                    <span className="text-yellow-400">{videoCosts.video_count - videoCosts.real_count} tahmini</span>
+                  </span>
+                )}
+              </span>
+            </div>
+            {videoCosts.by_provider && videoCosts.by_provider.length > 0 && (
+              <div className="px-5 py-3 border-b border-gray-800 flex flex-wrap gap-3">
+                {videoCosts.by_provider.map(p => {
+                  const meta = providerMeta(p.provider)
+                  return (
+                    <div key={p.provider} className={`rounded-xl px-3 py-2 text-xs flex items-center gap-2 border ${meta.bg}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                      <span className="text-gray-400">{meta.label}:</span>
+                      <span className={`font-semibold ${meta.text}`}>{fmtUsd(p.total_usd, 2)}</span>
+                      <span className="text-gray-500">({p.video_count} video)</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {videoCosts.monthly.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 text-sm">Henüz maliyet verisi yok.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-800/50">
+                    <tr>
+                      <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Ay</th>
+                      <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Video Sayısı</th>
+                      <th className="text-right px-5 py-3 text-xs text-gray-400 font-medium">Toplam Maliyet</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {videoCosts.monthly.slice().reverse().map(m => (
+                      <tr key={m.month}>
+                        <td className="px-5 py-3 font-medium text-white">{m.month}</td>
+                        <td className="px-5 py-3 text-right text-gray-400">{m.video_count}</td>
+                        <td className="px-5 py-3 text-right font-semibold text-red-400">{fmtUsd(m.total_usd, 2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
