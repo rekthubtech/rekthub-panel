@@ -104,6 +104,25 @@ const IconChevronDown = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0"><path d="m6 9 6 6 6-6"/></svg>
 )
 
+function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
+  if (totalPages <= 1) return null
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+  return (
+    <div className="flex items-center justify-center flex-wrap gap-1 px-5 py-3 border-t border-gray-800">
+      <button type="button" onClick={() => onChange(Math.max(1, page - 1))} disabled={page === 1}
+        className="px-2.5 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹</button>
+      {pages.map(p => (
+        <button type="button" key={p} onClick={() => onChange(p)}
+          className={`min-w-[28px] px-2 py-1.5 rounded-lg text-xs transition-colors ${p === page ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-white/[0.05]'}`}>
+          {p}
+        </button>
+      ))}
+      <button type="button" onClick={() => onChange(Math.min(totalPages, page + 1))} disabled={page === totalPages}
+        className="px-2.5 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">›</button>
+    </div>
+  )
+}
+
 const PROVIDER_META: Record<string, { label: string; dot: string; text: string; bg: string }> = {
   seedance: { label: 'Seedance (BytePlus)', dot: 'bg-purple-400', text: 'text-purple-300', bg: 'bg-purple-500/10 border-purple-500/20' },
   atlas: { label: 'Atlas Cloud', dot: 'bg-blue-400', text: 'text-blue-300', bg: 'bg-blue-500/10 border-blue-500/20' },
@@ -125,6 +144,9 @@ export default function AnalyticsPage() {
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [videosOpen, setVideosOpen] = useState(false)
+  const [videosPage, setVideosPage] = useState(1)
+  const [retentionPage, setRetentionPage] = useState(1)
+  const PAGE_SIZE = 10
   const [form, setForm] = useState({
     description: '', amount: '',
     expense_date: new Date().toISOString().slice(0, 10),
@@ -139,7 +161,7 @@ export default function AnalyticsPage() {
       const [s, ab, v, vc, summary, manual, ch, ret] = await Promise.all([
         api.get<Stats>('/analytics/summary'),
         api.get<AtlasBalance>('/analytics/atlas-balance').catch(() => null),
-        api.get<VideoRow[]>('/analytics/recent-videos'),
+        api.get<VideoRow[]>('/analytics/recent-videos?limit=500'),
         api.get<VideoCostSummary>('/analytics/video-costs').catch(() => null),
         api.get<any>('/costs/summary').catch(() => null),
         api.get<ManualExpense[]>('/costs/manual').catch(() => []),
@@ -210,6 +232,11 @@ export default function AnalyticsPage() {
   const bytePlusSpend = bytePlusProvider ? bytePlusProvider.total_usd : null
   const bytePlusVideoCount = bytePlusProvider ? bytePlusProvider.video_count : 0
 
+  const retentionTotalPages = Math.max(1, Math.ceil(retention.length / PAGE_SIZE))
+  const retentionPageItems = retention.slice((retentionPage - 1) * PAGE_SIZE, retentionPage * PAGE_SIZE)
+  const videosTotalPages = Math.max(1, Math.ceil(recent.length / PAGE_SIZE))
+  const videosPageItems = recent.slice((videosPage - 1) * PAGE_SIZE, videosPage * PAGE_SIZE)
+
   return (
     <div className="p-6 space-y-8">
 
@@ -275,7 +302,7 @@ export default function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
-                  {retention.map(r => (
+                  {retentionPageItems.map(r => (
                     <tr key={r.content_item_id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-5 py-3 font-medium text-white max-w-xs truncate">
                         <a href={`https://youtube.com/watch?v=${r.youtube_video_id}`} target="_blank" rel="noreferrer" className="hover:underline">
@@ -298,6 +325,7 @@ export default function AnalyticsPage() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={retentionPage} totalPages={retentionTotalPages} onChange={setRetentionPage} />
           </div>
         )}
 
@@ -318,8 +346,9 @@ export default function AnalyticsPage() {
             recent.length === 0 ? (
               <div className="p-8 text-center text-gray-500 text-sm border-t border-gray-800">Henüz video yok.</div>
             ) : (
+              <>
               <div className="divide-y divide-gray-800 border-t border-gray-800">
-                {recent.map(v => (
+                {videosPageItems.map(v => (
                   <div key={v.id} className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white truncate">{v.title}</p>
@@ -345,6 +374,8 @@ export default function AnalyticsPage() {
                   </div>
                 ))}
               </div>
+              <Pagination page={videosPage} totalPages={videosTotalPages} onChange={setVideosPage} />
+              </>
             )
           )}
         </div>
