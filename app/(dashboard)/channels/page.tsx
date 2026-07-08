@@ -276,134 +276,146 @@ export default function ChannelsPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-white">Kanallar</h2>
-        <button onClick={startOAuth} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
-          + Yeni Kanal Ekle
+        <button onClick={startOAuth} className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+          <span className="text-base leading-none">+</span> Yeni Kanal Ekle
         </button>
       </div>
 
       {channels.length === 0 ? (
-        <div className="bg-gray-800 rounded-xl p-12 text-center border border-gray-700">
+        <div className="bg-gray-800/60 rounded-2xl p-12 text-center border border-dashed border-gray-700">
+          <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-xl mx-auto mb-3">📺</div>
           <p className="text-gray-400 mb-3">Henüz kanal bağlanmamış.</p>
-          <button onClick={startOAuth} className="text-blue-400 text-sm font-medium">
+          <button onClick={startOAuth} className="text-blue-400 text-sm font-medium hover:text-blue-300">
             Google hesabı bağlayarak kanal ekle →
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {channels.map(ch => {
             const vs = (ch.branding && ch.branding.video_settings) || {}
+            const isActive = ch.status === 'active'
             return (
-            <div key={ch.id} className="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-sm">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold text-white">{ch.name}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${ch.status === 'active' ? 'bg-green-900/40 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
-                      {ch.status === 'active' ? 'Aktif' : 'Durduruldu'}
-                    </span>
+            <div key={ch.id} className="bg-gray-800/60 rounded-2xl p-5 border border-gray-700 hover:border-gray-600 transition-colors shadow-sm">
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex items-start gap-4 flex-1 min-w-0">
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold shrink-0 ${isActive ? 'bg-blue-600/15 text-blue-400 ring-1 ring-blue-500/30' : 'bg-gray-700/60 text-gray-500'}`}>
+                    {ch.name.charAt(0).toUpperCase()}
                   </div>
-                  <p className="text-xs text-gray-500">{ch.youtube_channel_id}</p>
-                  <div className="mt-3 flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Model:</span>
-                      {editingModel === ch.id ? (
-                        <select autoFocus defaultValue={ch.default_model}
-                          onChange={e => updateModel(ch.id, e.target.value)}
-                          onBlur={() => setEditingModel(null)}
-                          className="text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1 max-w-xs">
-                          {MODEL_GROUPS.map(group => (
-                            <optgroup key={group.label} label={group.label}>
-                              {group.models.map(m => (
-                                <option key={m.id} value={m.id}>{m.label}{group.label !== '🤖 LLM Modeller' ? ` · ${providerLabel(m.id)}` : ''}</option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
-                      ) : (
-                        <button onClick={() => setEditingModel(ch.id)} className="text-xs text-blue-400 hover:underline">
-                          {ch.default_model || 'Seç'}
-                        </button>
-                      )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-semibold text-white truncate">{ch.name}</h3>
+                      <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-green-500/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-green-400' : 'bg-gray-500'}`} />
+                        {isActive ? 'Aktif' : 'Durduruldu'}
+                      </span>
                     </div>
-                    <button onClick={() => toggleSlots(ch)} className="text-xs text-gray-500 hover:text-gray-300">
-                      Zamanlama ({ch.schedule_slots?.length ?? 0} slot)
-                    </button>
-                    <button onClick={() => toggleVideoSettings(ch)} className="text-xs text-gray-500 hover:text-gray-300">
-                      Video Ayarları ({vs.duration || 5}sn · {vs.aspect_ratio || 'varsayılan'} · {vs.resolution || 'varsayılan'})
-                    </button>
+                    <p className="text-xs text-gray-500 font-mono truncate">{ch.youtube_channel_id}</p>
+
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-xs bg-gray-900/60 border border-gray-700 rounded-full px-3 py-1.5">
+                        <span className="text-gray-500">🎬</span>
+                        {editingModel === ch.id ? (
+                          <select autoFocus defaultValue={ch.default_model}
+                            onChange={e => updateModel(ch.id, e.target.value)}
+                            onBlur={() => setEditingModel(null)}
+                            className="text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1 max-w-xs">
+                            {MODEL_GROUPS.map(group => (
+                              <optgroup key={group.label} label={group.label}>
+                                {group.models.map(m => (
+                                  <option key={m.id} value={m.id}>{m.label}{group.label !== '🤖 LLM Modeller' ? ` · ${providerLabel(m.id)}` : ''}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                        ) : (
+                          <button onClick={() => setEditingModel(ch.id)} className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
+                            {ch.default_model || 'Seç'}
+                          </button>
+                        )}
+                      </div>
+                      <button onClick={() => toggleSlots(ch)}
+                        className={`flex items-center gap-1.5 text-xs rounded-full px-3 py-1.5 border transition-colors ${showSlots === ch.id ? 'bg-blue-600/10 border-blue-500/40 text-blue-400' : 'bg-gray-900/60 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'}`}>
+                        <span>🕐</span> Zamanlama <span className="text-gray-600">·</span> {ch.schedule_slots?.length ?? 0} slot
+                      </button>
+                      <button onClick={() => toggleVideoSettings(ch)}
+                        className={`flex items-center gap-1.5 text-xs rounded-full px-3 py-1.5 border transition-colors ${showVideoSettings === ch.id ? 'bg-blue-600/10 border-blue-500/40 text-blue-400' : 'bg-gray-900/60 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'}`}>
+                        <span>📐</span> {vs.duration || 5}sn · {vs.aspect_ratio || 'varsayılan'} · {vs.resolution || 'varsayılan'}
+                      </button>
+                    </div>
+
+                    {showSlots === ch.id && (
+                      <div className="mt-3 p-4 bg-gray-900/60 rounded-xl border border-gray-800">
+                        {slotsLoading ? (
+                          <p className="text-xs text-gray-500 mb-2">Yükleniyor…</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {(ch.schedule_slots || []).length === 0 && (
+                              <span className="text-xs text-gray-500">Henüz slot yok.</span>
+                            )}
+                            {(ch.schedule_slots || []).map(slot => (
+                              <span key={slot.id} className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded-full pl-3 pr-2 py-1 flex items-center gap-1.5">
+                                {slot.publish_time} UTC <span className="text-gray-600">·</span> {FORMAT_OPTIONS.find(f => f.id === slot.format)?.label || slot.format}
+                                <button onClick={() => removeSlot(ch, slot)} className="text-red-400 hover:text-red-300 ml-0.5 leading-none">×</button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2 items-center flex-wrap">
+                          <input type="time" value={newSlot} onChange={e => setNewSlot(e.target.value)}
+                            className="text-xs border border-gray-600 bg-gray-800 text-white rounded-lg px-2 py-1.5" />
+                          <select value={newFormat} onChange={e => setNewFormat(e.target.value)}
+                            className="text-xs border border-gray-600 bg-gray-800 text-white rounded-lg px-2 py-1.5">
+                            {FORMAT_OPTIONS.map(f => (
+                              <option key={f.id} value={f.id}>{f.label}</option>
+                            ))}
+                          </select>
+                          <button onClick={() => addSlot(ch)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium">Ekle</button>
+                        </div>
+                        <p className="text-[10px] text-gray-600 mt-2">Saatler UTC olarak kaydedilir.</p>
+                      </div>
+                    )}
+                    {showVideoSettings === ch.id && (
+                      <div className="mt-3 p-4 bg-gray-900/60 rounded-xl border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-3">Bu kanal için otomatik üretilecek videoların varsayılan süre/format/kalite ayarları. Zamanlanmış tüm paylaşımlarda kullanılır.</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-1">Süre (sn)</label>
+                            <input type="number" min={1} max={120} value={vsDuration}
+                              onChange={e => setVsDuration(Number(e.target.value) || 5)}
+                              className="w-full text-xs border border-gray-600 bg-gray-800 text-white rounded-lg px-2 py-1.5" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-1">Format</label>
+                            <select value={vsAspectRatio} onChange={e => setVsAspectRatio(e.target.value)}
+                              className="w-full text-xs border border-gray-600 bg-gray-800 text-white rounded-lg px-2 py-1.5">
+                              {ASPECT_RATIO_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-1">Kalite</label>
+                            <select value={vsResolution} onChange={e => setVsResolution(e.target.value)}
+                              className="w-full text-xs border border-gray-600 bg-gray-800 text-white rounded-lg px-2 py-1.5">
+                              {RESOLUTION_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex justify-end mt-3">
+                          <button onClick={() => saveVideoSettings(ch)} disabled={vsSaving}
+                            className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium">
+                            {vsSaving ? 'Kaydediliyor…' : 'Kaydet'}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-gray-600 mt-2">Not: Shorts için 9:16 önerilir. Bazı modeller belirli süre/kalite kombinasyonlarını desteklemeyebilir.</p>
+                      </div>
+                    )}
                   </div>
-                  {showSlots === ch.id && (
-                    <div className="mt-3 p-3 bg-gray-900 rounded-lg">
-                      {slotsLoading ? (
-                        <p className="text-xs text-gray-500 mb-2">Yükleniyor…</p>
-                      ) : (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {(ch.schedule_slots || []).length === 0 && (
-                            <span className="text-xs text-gray-500">Henüz slot yok.</span>
-                          )}
-                          {(ch.schedule_slots || []).map(slot => (
-                            <span key={slot.id} className="text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded px-2 py-1 flex items-center gap-1">
-                              {slot.publish_time} UTC · {FORMAT_OPTIONS.find(f => f.id === slot.format)?.label || slot.format}
-                              <button onClick={() => removeSlot(ch, slot)} className="text-red-400 hover:text-red-300 ml-1">×</button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex gap-2 items-center flex-wrap">
-                        <input type="time" value={newSlot} onChange={e => setNewSlot(e.target.value)}
-                          className="text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1" />
-                        <select value={newFormat} onChange={e => setNewFormat(e.target.value)}
-                          className="text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1">
-                          {FORMAT_OPTIONS.map(f => (
-                            <option key={f.id} value={f.id}>{f.label}</option>
-                          ))}
-                        </select>
-                        <button onClick={() => addSlot(ch)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Ekle</button>
-                      </div>
-                      <p className="text-[10px] text-gray-600 mt-2">Saatler UTC olarak kaydedilir.</p>
-                    </div>
-                  )}
-                  {showVideoSettings === ch.id && (
-                    <div className="mt-3 p-3 bg-gray-900 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-2">Bu kanal için otomatik üretilecek videoların varsayılan süre/format/kalite ayarları. Zamanlanmış tüm paylaşımlarda kullanılır.</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] text-gray-500 block mb-1">Süre (sn)</label>
-                          <input type="number" min={1} max={120} value={vsDuration}
-                            onChange={e => setVsDuration(Number(e.target.value) || 5)}
-                            className="w-full text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1" />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-500 block mb-1">Format</label>
-                          <select value={vsAspectRatio} onChange={e => setVsAspectRatio(e.target.value)}
-                            className="w-full text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1">
-                            {ASPECT_RATIO_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-500 block mb-1">Kalite</label>
-                          <select value={vsResolution} onChange={e => setVsResolution(e.target.value)}
-                            className="w-full text-xs border border-gray-600 bg-gray-700 text-white rounded px-2 py-1">
-                            {RESOLUTION_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="flex justify-end mt-2">
-                        <button onClick={() => saveVideoSettings(ch)} disabled={vsSaving}
-                          className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50">
-                          {vsSaving ? 'Kaydediliyor…' : 'Kaydet'}
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-gray-600 mt-2">Not: Shorts için 9:16 önerilir. Bazı modeller belirli süre/kalite kombinasyonlarını desteklemeyebilir.</p>
-                    </div>
-                  )}
                 </div>
-                <div className="flex items-center gap-2 ml-4">
+                <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => toggleStatus(ch)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-medium ${ch.status === 'active' ? 'bg-yellow-900/40 text-yellow-400' : 'bg-green-900/40 text-green-400'}`}>
-                    {ch.status === 'active' ? 'Durdur' : 'Başlat'}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${isActive ? 'bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20' : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'}`}>
+                    {isActive ? 'Durdur' : 'Başlat'}
                   </button>
-                  <button onClick={() => setDeleteConfirm(ch.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-900/40 text-red-400">Sil</button>
+                  <button onClick={() => setDeleteConfirm(ch.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors font-medium">Sil</button>
                 </div>
               </div>
             </div>
@@ -413,13 +425,14 @@ export default function ChannelsPage() {
       )}
 
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-xl p-6 max-w-sm w-full border border-gray-700">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-2xl p-6 max-w-sm w-full border border-gray-700 shadow-xl">
+            <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-lg mb-3">🗑️</div>
             <h3 className="font-semibold text-white mb-2">Kanalı sil</h3>
             <p className="text-sm text-gray-400 mb-4">Bu kanal kalıcı olarak silinecek. Emin misin?</p>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 border border-gray-600 text-gray-300 rounded-lg text-sm hover:bg-gray-700">İptal</button>
-              <button onClick={() => deleteChannel(deleteConfirm)} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">Sil</button>
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 border border-gray-600 text-gray-300 rounded-lg text-sm hover:bg-gray-700 transition-colors">İptal</button>
+              <button onClick={() => deleteChannel(deleteConfirm)} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors">Sil</button>
             </div>
           </div>
         </div>
