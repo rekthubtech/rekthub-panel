@@ -53,7 +53,7 @@ export default function ConceptsPage() {
   const [selected, setSelected] = useState<Suggestion | null>(null)
   const [editForm, setEditForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '', status: 'pending' })
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '' })
+  const [form, setForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '', status: 'pending' })
   const [reorderingId, setReorderingId] = useState<string | null>(null)
 
   useEffect(() => { fetchData() }, [selectedChannel])
@@ -131,10 +131,11 @@ export default function ConceptsPage() {
         suggested_name: form.suggested_name,
         suggested_prompt: form.suggested_prompt || null,
         rationale: form.rationale || null,
+        status: form.status,
       }
       if (form.channel_id) body.channel_id = form.channel_id
       await api.post('/concepts/suggestions', body)
-      setForm({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: selectedChannel })
+      setForm({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: selectedChannel, status: form.status })
       setShowForm(false)
       fetchData()
     } finally { setSubmitting(false) }
@@ -300,6 +301,17 @@ export default function ConceptsPage() {
               </select>
             </div>
             <div>
+              <label className="text-xs text-gray-400 block mb-1">Durum</label>
+              <select value={form.status}
+                onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="pending">Bekliyor</option>
+                <option value="approved">Onaylandi</option>
+                <option value="rejected">Reddedildi</option>
+                <option value="testing">Test Ediliyor</option>
+              </select>
+            </div>
+            <div className="col-span-2">
               <label className="text-xs text-gray-400 block mb-1">Gerekce</label>
               <input value={form.rationale}
                 onChange={e => setForm(f => ({ ...f, rationale: e.target.value }))}
