@@ -140,10 +140,13 @@ export default function ConceptsPage() {
     } finally { setSubmitting(false) }
   }
 
-  // Ayni kanal + durumdaki kardesler (yayinlanma sirasi bu grup icinde anlamli)
+  // Ayni kanal + durum + kullanilma durumundaki kardesler.
+  // Kullanilmis (yayinlanmis) ve kullanilmamis konseptler ayri kuyruklar olarak sayilir;
+  // aksi halde sira numaralari (orn. "20/39") kafa karistirici olur çünkü zaten
+  // yayinlanmis videolar henuz yayinlanmamis kuyruga karisiyordu.
   function siblingsOf(s: Suggestion) {
     return suggestions
-      .filter(x => x.channel_id === s.channel_id && x.status === s.status)
+      .filter(x => x.channel_id === s.channel_id && x.status === s.status && x.used === s.used)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
   }
 
