@@ -148,7 +148,29 @@ export default function ConceptsPage() {
     } finally { setSubmitting(false) }
   }
 
-  const bulkLines = bulkText.split('\n').map(l => l.trim()).filter(Boolean)
+  // Promptlar cok uzun/cok satirli olabiliyor, bu yuzden satir bazli degil
+  // numara bazli ayiriyoruz: her "1.", "2." gibi satir basi yeni bir promptun
+  // baslangicidir, bir sonraki numaraya kadar olan her sey (cok satirli dahil)
+  // ayni prompta dahildir.
+  function parseBulkPrompts(text: string): string[] {
+    const regex = /(?:^|\n)[ \t]*\d+[.)][ \t]+/g
+    const matches = [...text.matchAll(regex)]
+    if (matches.length === 0) {
+      // Numaralandirma yoksa: tum metni tek prompt olarak kabul et (bos degilse)
+      const t = text.trim()
+      return t ? [t] : []
+    }
+    const parts: string[] = []
+    for (let i = 0; i < matches.length; i++) {
+      const start = matches[i].index! + matches[i][0].length
+      const end = i + 1 < matches.length ? matches[i + 1].index! : text.length
+      const part = text.slice(start, end).trim()
+      if (part) parts.push(part)
+    }
+    return parts
+  }
+
+  const bulkLines = parseBulkPrompts(bulkText)
 
   async function handleBulkSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -308,7 +330,7 @@ export default function ConceptsPage() {
       {showBulkForm && (
         <form onSubmit={handleBulkSubmit} className="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-6">
           <h3 className="font-semibold mb-1 text-white">Toplu Prompt Ekle</h3>
-          <p className="text-xs text-gray-500 mb-4">Her satira bir prompt yazin. Hepsi secilen kanala atanir ve dogrudan &quot;Onaylandi&quot; olarak eklenir, tek tek onay gerekmez.</p>
+          <p className="text-xs text-gray-500 mb-4">Her promptu &quot;1.&quot;, &quot;2.&quot; gibi bir numarayla baslatin. Prompt istediginiz kadar uzun/cok satirli olabilir; bir sonraki numaraya kadar ayni prompta dahil edilir. Hepsi secilen kanala atanir ve dogrudan &quot;Onaylandi&quot; olarak eklenir, tek tek onay gerekmez.</p>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 md:col-span-1">
               <label className="text-xs text-gray-400 block mb-1">Kanal *</label>
@@ -320,12 +342,12 @@ export default function ConceptsPage() {
               </select>
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-gray-400 block mb-1">Promptlar (satir basina bir tane)</label>
+              <label className="text-xs text-gray-400 block mb-1">Promptlar (numarali, cok satirli olabilir)</label>
               <textarea value={bulkText}
                 onChange={e => setBulkText(e.target.value)}
-                rows={10}
+                rows={16}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={'Ilk prompt...\nIkinci prompt...\nUcuncu prompt...'} />
+                placeholder={'1. Ilk promptun tum metni burada...\nbirden fazla satir surebilir...\n\n2. Ikinci promptun tum metni...\nyine birden fazla satir olabilir...\n\n3. Ucuncu prompt...'} />
             </div>
             <div className="col-span-2 flex items-center justify-between flex-wrap gap-2">
               <div className="text-xs text-gray-500">
