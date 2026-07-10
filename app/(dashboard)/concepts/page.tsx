@@ -56,10 +56,17 @@ export default function ConceptsPage() {
   const [form, setForm] = useState({ suggested_name: '', suggested_prompt: '', rationale: '', channel_id: '', status: 'pending' })
   const [reorderingId, setReorderingId] = useState<string | null>(null)
 
+  const [showBulkForm, setShowBulkForm] = useState(false)
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  const [bulkChannelId, setBulkChannelId] = useState('')
+  const [bulkText, setBulkText] = useState('')
+  const [bulkResult, setBulkResult] = useState<string | null>(null)
+
   useEffect(() => { fetchData() }, [selectedChannel])
 
   useEffect(() => {
     setForm(f => ({ ...f, channel_id: selectedChannel }))
+    setBulkChannelId(selectedChannel)
   }, [selectedChannel])
 
   async function fetchData() {
@@ -141,6 +148,26 @@ export default function ConceptsPage() {
     } finally { setSubmitting(false) }
   }
 
+  const bulkLines = bulkText.split('\n').map(l => l.trim()).filter(Boolean)
+
+  async function handleBulkSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!bulkChannelId || bulkLines.length === 0) return
+    setBulkSubmitting(true)
+    setBulkResult(null)
+    try {
+      const res = await api.post<{ success: boolean; created: number }>('/concepts/suggestions/bulk', {
+        channel_id: bulkChannelId,
+        prompts: bulkLines,
+      })
+      setBulkResult(`${res.created} konsept eklendi ve onaylandi.`)
+      setBulkText('')
+      fetchData()
+    } catch {
+      setBulkResult('Hata olustu, tekrar deneyin.')
+    } finally { setBulkSubmitting(false) }
+  }
+
   // Ayni kanal + durum + kullanilma durumundaki kardesler.
   // Kullanilmis (yayinlanmis) ve kullanilmamis konseptler ayri kuyruklar olarak sayilir;
   // aksi halde sira numaralari (orn. "20/39") kafa karistirici olur çünkü zaten
@@ -207,8 +234,8 @@ export default function ConceptsPage() {
 
   const searched = search.trim()
     ? filtered.filter(s =>
-        s.suggested_name.toLowerCase().includes(search.trim().toLowerCase()) ||
-        (s.suggested_prompt || '').toLowerCase().includes(search.trim().toLowerCase()))
+      s.suggested_name.toLowerCase().includes(search.trim().toLowerCase()) ||
+      (s.suggested_prompt || '').toLowerCase().includes(search.trim().toLowerCase()))
     : filtered
 
   const counts: Record<string, number> = {
@@ -229,10 +256,16 @@ export default function ConceptsPage() {
           <h2 className="text-2xl font-bold text-white">Konseptler</h2>
           <span className="text-sm text-gray-500">Toplam: {counts.all}</span>
         </div>
-        <button onClick={() => setShowForm(!showForm)}
-          className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-          + Yeni Konsept
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowBulkForm(!showBulkForm); setShowForm(false) }}
+            className="text-sm bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium">
+            + Toplu Ekle
+          </button>
+          <button onClick={() => { setShowForm(!showForm); setShowBulkForm(false) }}
+            className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+            + Yeni Konsept
+          </button>
+        </div>
       </div>
 
       <div className="sticky top-0 z-10 bg-[#0a0e17]/95 backdrop-blur-sm pt-1 pb-3 -mx-6 px-6 mb-3 border-b border-gray-800/60">
@@ -271,6 +304,48 @@ export default function ConceptsPage() {
           {search ? `${searched.length} sonuc bulundu` : `${searched.length} konsept listeleniyor`}
         </p>
       </div>
+
+      {showBulkForm && (
+        <form onSubmit={handleBulkSubmit} className="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-6">
+          <h3 className="font-semibold mb-1 text-white">Toplu Prompt Ekle</h3>
+          <p className="text-xs text-gray-500 mb-4">Her satira bir prompt yazin. Hepsi secilen kanala atanir ve dogrudan &quot;Onaylandi&quot; olarak eklenir, tek tek onay gerekmez.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 md:col-span-1">
+              <label className="text-xs text-gray-400 block mb-1">Kanal *</label>
+              <select required value={bulkChannelId}
+                onChange={e => setBulkChannelId(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Kanal secin</option>
+                {channels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-gray-400 block mb-1">Promptlar (satir basina bir tane)</label>
+              <textarea value={bulkText}
+                onChange={e => setBulkText(e.target.value)}
+                rows={10}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={'Ilk prompt...\nIkinci prompt...\nUcuncu prompt...'} />
+            </div>
+            <div className="col-span-2 flex items-center justify-between flex-wrap gap-2">
+              <div className="text-xs text-gray-500">
+                {bulkLines.length > 0 ? `${bulkLines.length} prompt algilandi` : ''}
+                {bulkResult && <span className="ml-2 text-green-400 font-medium">{bulkResult}</span>}
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setShowBulkForm(false); setBulkResult(null) }}
+                  className="text-sm px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-colors">
+                  Iptal
+                </button>
+                <button type="submit" disabled={bulkSubmitting || !bulkChannelId || bulkLines.length === 0}
+                  className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {bulkSubmitting ? 'Ekleniyor...' : `Toplu Ekle (${bulkLines.length})`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      )}
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-6">
