@@ -5,6 +5,7 @@ import { clearToken, api } from '@/lib/api'
 
 const NAV = [
   { href: '/channels', label: 'Kanallar' },
+  { href: '/archive', label: 'Arşiv' },
   { href: '/concepts', label: 'Konseptler' },
   { href: '/video-test', label: 'Video Test' },
   { href: '/analytics', label: 'Analitik' },
